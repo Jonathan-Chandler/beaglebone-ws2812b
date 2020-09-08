@@ -6,12 +6,14 @@
 // 1 cycle   = 1000 us = 1000 ms = 800 khz
 // 1.250 uS     1 ms       1 s
 
-#define WS2812_DUTY_CYCLE_SIGNAL_0      28    // 350 / 1250 = 28%
-#define WS2812_DUTY_CYCLE_SIGNAL_1      72    // 900 / 1250 = 72%
+#define WS2812_LED_COUNT              10
 
-#define WS2812_SHORT_SIGNAL_TIME_NS     350
-#define WS2812_LONG_SIGNAL_TIME_NS      900
-#define WS2812_TOTAL_SIGNAL_TIME_NS     (WS2812_LONG_SIGNAL_TIME_NS + WS2812_SHORT_SIGNAL_TIME_NS)  // 1250 ns (800 khz)
+#define WS2812_DUTY_CYCLE_SIGNAL_0    28    // 350 / 1250 = 28%
+#define WS2812_DUTY_CYCLE_SIGNAL_1    72    // 900 / 1250 = 72%
+
+#define WS2812_SHORT_SIGNAL_TIME_NS   350
+#define WS2812_LONG_SIGNAL_TIME_NS    900
+#define WS2812_TOTAL_SIGNAL_TIME_NS   (WS2812_LONG_SIGNAL_TIME_NS + WS2812_SHORT_SIGNAL_TIME_NS)  // 1250 ns (800 khz)
 
 #define WS2812_0_HIGH_TIME_NS         350
 #define WS2812_0_LOW_TIME_NS          900
@@ -19,25 +21,12 @@
 #define WS2812_1_LOW_TIME_NS          350
 #define WS2812_RESET_LOW_TIME_NS      50001 // >50 us
 
-typedef struct
-{
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
-} rgb_t;
-
-typedef struct
-{
-  size_t led_count;
-  rgb_t *led_color;
-} led_t;
-
-void test_ws(void);
-led_t* init_leds(size_t led_count);
-int destroy_leds(led_t **leds);
-
-int set_led(led_t *leds, size_t led_id, uint8_t red, uint8_t green, uint8_t blue);
-int set_all_leds(led_t *leds, uint8_t red, uint8_t green, uint8_t blue);
+#define WS2812_GREEN_OFFSET           16
+#define WS2812_GREEN_MASK             (0xFF << WS2812_GREEN_OFFSET)
+#define WS2812_RED_OFFSET             8
+#define WS2812_RED_MASK               (0xFF << WS2812_RED_OFFSET)
+#define WS2812_BLUE_OFFSET            0
+#define WS2812_BLUE_MASK              (0xFF << WS2812_BLUE_OFFSET)
 
 #endif
 

@@ -1,7 +1,7 @@
 CC = /home/jonathan/beaglebone-compile/bin/arm-linux-gnueabihf-g++
 PRCC = /home/jonathan/beaglebone-compile/pru/bin/clpru
 
-INCLUDES = -Iinc
+INCLUDES = -Iinc -Ipru_src
 CFLAGS = -Wall
 
 SOURCES = $(wildcard src/*.c)

@@ -41,11 +41,7 @@ void main(void)
 //  {
     for(i=0; i<1000; i++) 
     {
-      shared_mem[i] = 0xAABB;
-    }
-
-    for(i=0; i<1000; i++) 
-    {
+      shared_mem[i] = 0xEEFF;
     }
 
     for(i=0; i<10; i++) 

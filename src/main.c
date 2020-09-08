@@ -1,137 +1,78 @@
-// #include <stdio.h>
-// #include <stdbool.h>
-// #include <stdint.h>
-// #include "ws2812b.h"
-
-#define WS2812_LED_COUNT 150
-#define WS2812_LED_COUNT 150
-
-// lib/ti/pru-software-support-package/include/am572x_2_0/pru_cfg.h
-// lib/ti/pru-software-support-package/include/am335x/pru_cfg.h
-// lib/ti/pru-software-support-package/include/am571x/pru_cfg.h
-// lib/ti/pru-software-support-package/include/am572x_1_1/pru_cfg.h
-// lib/ti/pru-software-support-package/include/am437x/pru_cfg.h
-// lib/ti/pru-software-support-package/include/k2g/pru_cfg.h
-
-
-// /sys/devices/platform/ocp/ocp\:P9_14_pinmux/driver/ocp\:P9_30_pinmux/of_node/pinctrl-names
-// /sys/devices/platform/ocp/ocp\:P9_14_pinmux/driver/ocp\:P9_30_pinmux/of_node/pinctrl-names
-// pruout
-// // int main()
-// // {
-// //   led_t *leds = init_leds(WS2812_LED_COUNT);
-// // 
-// //   if (!leds)
-// //   {
-// //     printf("fail to allocate\n");
-// //     return -1;
-// //   }
-// // 
-// //   set_all_leds(leds, 255, 0, 255);
-// // 
-// //   destroy_leds(&leds);
-// //   if (leds)
-// //   {
-// //     printf("fail to deallocate\n");
-// //     return -1;
-// //   }
-// // 
-// //   printf("exit\n");
-// //   return 0;
-// // }
-
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <unistd.h>
+#include "ws2812b.h"
 
-int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printf("Usage: %s <phys_addr> <offset>\n", argv[0]);
-        return 0;
-    }
+#define SHARED_MEM_MAP_FILE "/dev/mem"
+#define SHARED_MEM_SIZE     (WS2812_LED_COUNT * sizeof(uint32_t))
 
-    off_t offset = strtoul(argv[1], NULL, 0);
-    size_t len = strtoul(argv[2], NULL, 0);
+int main(void)
+{
+  int result;
+  uint32_t leds[WS2812_LED_COUNT];
+  int shared_mem_fd;
+  volatile uint32_t *shared_mem_map;
 
-    // Truncate offset to a multiple of the page size, or mmap will fail.
-    size_t pagesize = sysconf(_SC_PAGE_SIZE);
-    off_t page_base = (offset / pagesize) * pagesize;
-    off_t page_offset = offset - page_base;
+  shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  if (shared_mem_fd < 0)
+  {
+    perror("Fail to open /dev/mem");
+    exit(EXIT_FAILURE);
+  }
 
-    int fd = open("/dev/mem", O_SYNC);
-    unsigned char *mem = (unsigned char *)mmap(NULL, page_offset + len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, page_base);
-    if (mem == MAP_FAILED) {
-        perror("Can't map memory");
-        return -1;
-    }
+  result = lseek(shared_mem_fd, SHARED_MEM_SIZE-1, SEEK_SET);
+  if (result == -1) 
+  {
+    close(shared_mem_fd);
+    perror("Error lseek");
+    exit(EXIT_FAILURE);
+  }
 
-    size_t i;
-    for (i = 0; i < len; ++i)
-        printf("%02x ", (int)mem[page_offset + i]);
+  result = write(shared_mem_fd, "", 1);
+  if (result != 1) 
+  {
+    close(shared_mem_fd);
+    perror("Error writing last byte");
+    exit(EXIT_FAILURE);
+  }
 
-    return 0;
+  shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, 0);
+  if (shared_mem_map == MAP_FAILED) 
+  {
+    close(shared_mem_fd);
+    perror("Error mmapping");
+    exit(EXIT_FAILURE);
+  }
+
+  // all blue
+  for (int i = 0; i < WS2812_LED_COUNT; i++)
+  {
+    leds[i] = WS2812_BLUE_MASK;
+  }
+
+  // synchronize
+  for (int i = 0; i < WS2812_LED_COUNT; i++)
+  {
+    shared_mem_map = leds[i];
+  }
+
+  if (munmap(shared_mem_map, SHARED_MEM_SIZE) == -1) 
+  {
+    close(shared_mem_fd);
+    perror("Error unmapping");
+    exit(EXIT_FAILURE);
+  }
+
+  close(shared_mem_fd);
+  printf("Wrote shared memory\n");
 }
-
-// void test(void)
-// {
-//   led_t *leds = init_leds(WS2812_LED_COUNT);
-// 
-//   if (!leds)
-//   {
-//     printf("fail to allocate\n");
-//     return -1;
-//   }
-// 
-//   if (leds->led_count != 20)
-//   {
-//     printf("wrong led count\n");
-//   }
-// 
-//   if (leds->led_color[0].red != 0)
-//   {
-//     printf("red\n");
-//   }
-// 
-//   if (leds->led_color[0].green != 0)
-//   {
-//     printf("green\n");
-//   }
-// 
-//   if (leds->led_color[0].blue != 0)
-//   {
-//     printf("blue\n");
-//   }
-// 
-//   set_led(leds, 0, 20, 0, 0);
-// 
-// 
-//   if (leds->led_color[0].red != 20)
-//   {
-//     printf("red\n");
-//   }
-// 
-//   if (leds->led_color[0].green != 0)
-//   {
-//     printf("green\n");
-//   }
-// 
-//   if (leds->led_color[0].blue != 0)
-//   {
-//     printf("blue\n");
-//   }
-// 
-//   destroy_leds(&leds);
-//   if (leds)
-//   {
-//     printf("fail to deallocate\n");
-//     return -1;
-//   }
-// 
-//   test_ws();
-//   printf("exit\n");
-// }
 
 // EHRPWM1A = 9_14
 // EHRPWM1B = 9_16

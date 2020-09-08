@@ -3,11 +3,6 @@
 #include <stdlib.h>
 #include "ws2812b.h"
 
-void test_ws()
-{
-  printf("testws\n");
-}
-
 led_t *init_leds(size_t led_count)
 {
   led_t *led_temp = calloc(1, sizeof(led_t));
