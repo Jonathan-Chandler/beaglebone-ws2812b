@@ -10,8 +10,9 @@
 #include <unistd.h>
 #include "ws2812b.h"
 
-#define SHARED_MEM_MAP_FILE "/dev/mem"
-#define SHARED_MEM_SIZE     (WS2812_LED_COUNT * sizeof(uint32_t))
+#define SHARED_MEM_MAP_FILE   "/dev/mem"
+#define SHARED_MEM_START_ADDR 0x4a310000
+#define SHARED_MEM_SIZE       (WS2812_LED_COUNT * sizeof(uint32_t))
 
 int main(void)
 {
@@ -19,6 +20,7 @@ int main(void)
   uint32_t leds[WS2812_LED_COUNT];
   int shared_mem_fd;
   volatile uint32_t *shared_mem_map;
+  printf("%d\n", getpagesize());
 
   shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
   if (shared_mem_fd < 0)
@@ -27,23 +29,9 @@ int main(void)
     exit(EXIT_FAILURE);
   }
 
-  result = lseek(shared_mem_fd, SHARED_MEM_SIZE-1, SEEK_SET);
-  if (result == -1) 
-  {
-    close(shared_mem_fd);
-    perror("Error lseek");
-    exit(EXIT_FAILURE);
-  }
-
-  result = write(shared_mem_fd, "", 1);
-  if (result != 1) 
-  {
-    close(shared_mem_fd);
-    perror("Error writing last byte");
-    exit(EXIT_FAILURE);
-  }
-
-  shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, 0);
+  // shared_mem_map = mmap((void *)SHARED_MEM_START_ADDR, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, 0);
+  // shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
+  shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
   if (shared_mem_map == MAP_FAILED) 
   {
     close(shared_mem_fd);
@@ -60,10 +48,31 @@ int main(void)
   // synchronize
   for (int i = 0; i < WS2812_LED_COUNT; i++)
   {
-    shared_mem_map = leds[i];
+    shared_mem_map[i] = leds[i];
   }
 
-  if (munmap(shared_mem_map, SHARED_MEM_SIZE) == -1) 
+  for (int i = 0; i < 100; i++)
+  {
+    if (result == 0)
+    {
+      shared_mem_map[0] = 0;
+      result = 1;
+    }
+    else
+    {
+      shared_mem_map[0] = 1;
+      result = 0;
+    }
+    printf("%d\n", shared_mem_map[0]);
+
+    for (int x = 0; x < 100000000; x++)
+    {
+      asm("nop"); 
+    }
+  }
+
+  // if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
+  if (munmap((void *)shared_mem_map, SHARED_MEM_SIZE) == -1) 
   {
     close(shared_mem_fd);
     perror("Error unmapping");

@@ -1,4 +1,5 @@
-CC = /home/jonathan/beaglebone-compile/bin/arm-linux-gnueabihf-g++
+# CC = /home/jonathan/beaglebone-compile/bin/arm-linux-gnueabihf-g++
+CC = gcc
 PRCC = /home/jonathan/beaglebone-compile/pru/bin/clpru
 
 INCLUDES = -Iinc -Ipru_src
@@ -13,8 +14,8 @@ build/%.o: src/%.c
 
 all: $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(OBJ_NAME)
-	make -C ./pru-src all
+	TARGET=main.pru0 make -C ./pru-src all
 
 clean:
-	rm *.exe build/*.o $(OBJ_NAME)
+	rm build/* leds
 
