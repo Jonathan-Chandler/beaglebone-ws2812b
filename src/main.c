@@ -14,6 +14,12 @@
 #define SHARED_MEM_START_ADDR 0x4a310000
 #define SHARED_MEM_SIZE       (WS2812_LED_COUNT * sizeof(uint32_t))
 
+#define SHARED_MEM_LED_BEGIN_WRITE_OFFSET 0x0
+#define SHARED_MEM_LED_COUNT_OFFSET       0x1
+#define SHARED_MEM_LED_START_OFFSET       0x2
+#define WS2812_LED_COUNT                  10
+#define WS2812_LED_BIT_COUNT              24  // 24 bits per led - 8 bits each red/green/blue
+
 int main(void)
 {
   int result;
@@ -42,7 +48,7 @@ int main(void)
   // all blue
   for (int i = 0; i < WS2812_LED_COUNT; i++)
   {
-    leds[i] = WS2812_BLUE_MASK;
+    leds[SHARED_MEM_LED_START_OFFSET + i] = WS2812_BLUE_MASK;
   }
 
   // synchronize
@@ -51,25 +57,31 @@ int main(void)
     shared_mem_map[i] = leds[i];
   }
 
-  for (int i = 0; i < 100; i++)
-  {
-    if (result == 0)
-    {
-      shared_mem_map[0] = 0;
-      result = 1;
-    }
-    else
-    {
-      shared_mem_map[0] = 1;
-      result = 0;
-    }
-    printf("%d\n", shared_mem_map[0]);
+  // set LED count
+  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = WS2812_LED_COUNT;
 
-    for (int x = 0; x < 100000000; x++)
-    {
-      asm("nop"); 
-    }
-  }
+  // start writing led colors
+  shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
+
+//  for (int i = 0; i < 100; i++)
+//  {
+//    if (result == 0)
+//    {
+//      shared_mem_map[0] = 0;
+//      result = 1;
+//    }
+//    else
+//    {
+//      shared_mem_map[0] = 1;
+//      result = 0;
+//    }
+//    printf("%d\n", shared_mem_map[0]);
+//
+//    for (int x = 0; x < 100000000; x++)
+//    {
+//      asm("nop"); 
+//    }
+//  }
 
   // if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
   if (munmap((void *)shared_mem_map, SHARED_MEM_SIZE) == -1) 

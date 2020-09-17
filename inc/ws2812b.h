@@ -28,6 +28,23 @@
 #define WS2812_BLUE_OFFSET            0
 #define WS2812_BLUE_MASK              (0xFF << WS2812_BLUE_OFFSET)
 
+// __delay_cycles(100);    // 2 mhz (500 ns)
+// pru @ 200 mhz
+// 200,000,000 cycles         (1 second)          1 millisecond    =   200 cycles
+//    1 second            (1000 milliseconds)   1000 microseconds     1 microsecond 
+
+// 200,000,000 cycles         (1 second)          1 millisecond       1 microsecond   =     .2 cycles
+//    1 second            (1000 milliseconds)   1000 microseconds   1000 nanoseconds      1 nanosecond
+
+//    .2 cycles   =     1 cycle
+//  1 nanosecond      5 nanoseconds
+
+// 900 nanoseconds      1 cycle       =  180 cycles
+//                   (5 nanoseconds)
+
+// 350 nanoseconds      1 cycle       =  70 cycles
+//                   (5 nanoseconds)
+
 #endif
 
 // ehrpwm1A

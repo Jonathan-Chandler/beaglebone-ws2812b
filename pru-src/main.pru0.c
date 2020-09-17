@@ -24,46 +24,82 @@
 volatile register unsigned int __R30;
 volatile register unsigned int __R31;
 
+#define SHARED_MEM_LED_BEGIN_WRITE_OFFSET 0x0
+#define SHARED_MEM_LED_COUNT_OFFSET       0x1
+#define SHARED_MEM_LED_START_OFFSET       0x2
+#define WS2812_LED_COUNT                  10
+#define WS2812_LED_BIT_COUNT              24  // 24 bits per led - 8 bits each red/green/blue
+
 void main(void) 
 {
-	int i = 0;
-	uint32_t *gpio1 = (uint32_t *)GPIO1;
-  uint32_t *shared_mem = (uint32_t *)AM33XX_PRUSS_SHAREDRAM_BASE;
+  uint8_t   bit_num = 0;
+  uint32_t  led_num = 0;
+  uint32_t  led_count = 0;
+  uint32_t  *gpio1 = (uint32_t *)GPIO1;
+  uint32_t  *shared_mem = (uint32_t *)AM33XX_PRUSS_SHAREDRAM_BASE;
   // AM33XX_PRUSS_SHAREDRAM_BASE = 0x4a310000
   // PRU_SHAREDMEM   : org = 0x00010000 len = 0x00003000 CREGISTER=28 /* 12kB Shared RAM */
-	
-	/* Clear SYSCFG[STANDBY_INIT] to enable OCP master port */
-	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
-//      __delay_cycles(500000000/5);    // Wait 1/2 second
-    // 9_14
+  /* Clear SYSCFG[STANDBY_INIT] to enable OCP master port */
+  CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
-    while (1)
-    {
-//      if (shared_mem[0] > 0)
-      if (i == 0)
-      {
-        // gpio1[GPIO_SETDATAOUT]   = USR0 | USR1 | USR2 | USR3;			// led test
+  // 9_14
+  while (1)
+  {
+    //if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
+    //{
+    //  led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET];
 
-        // echo "pruout" > /sys/devices/platform/ocp/ocp\:P9_30_pinmux/state
-        __R30 = P9_30;
+    //  // loop over led colors
+    //  for (led_num = 0; led_num < led_count; led_num++)
+    //  {
+    //    // loop over color bits for this led
+    //    for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
+    //    {
+    //      if (shared_mem[led_num] & (1 << bit_num))
+    //      {
+    //        // delay_time set 1
+    //        __R30 = P9_30;
+    //        __delay_cycles(100000000/5);    // Wait 1/2 second
+    //      }
+    //      else
+    //      {
+    //        // delay_time set 0
+    //        __R30 = 0;
+    //        __delay_cycles(100000000/5);    // Wait 1/2 second
+    //      }
+    //    }
+    //  }
+    //}
 
-        // P9_30 (GPIO_112) ( pruout?)
+    //        // gpio1[GPIO_SETDATAOUT]   = USR0 | USR1 | USR2 | USR3;			// led test
+    //
+    //        __R30 = P9_30;
+    //
+    //        // P9_30 (GPIO_112) ( pruout?)
+    //
+    //        i = 1;
+    //      }
+    //      else
+    //      {
+    //        // gpio1[GPIO_CLEARDATAOUT] = USR0 | USR1 | USR2 | USR3 | P9_14;			// The the USR3 LED on
+    //
+    //        __R30 = 0;
+    //
+    //        i = 0;
+    //      }
 
-        i = 1;
-      }
-      else
-      {
-        // gpio1[GPIO_CLEARDATAOUT] = USR0 | USR1 | USR2 | USR3 | P9_14;			// The the USR3 LED on
+    // test
+           // echo "pruout" > /sys/devices/platform/ocp/ocp\:P9_30_pinmux/state
+    // __delay_cycles(100);    // 2 mhz (500 ns)
 
-        __R30 = 0;
+    __R30 = P9_30;
+    __delay_cycles(180);    // 2 mhz (500 ns)
+    __R30 = 0;
+    __delay_cycles(70);    // 2 mhz (500 ns)
+  }
 
-        i = 0;
-      }
-
-      __delay_cycles(500000000/5);    // Wait 1/2 second
-    }
-	__halt();
+  __halt();
 }
 
 // Turns off triggers
