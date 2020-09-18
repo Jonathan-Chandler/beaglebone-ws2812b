@@ -10,7 +10,7 @@
 #define WS2812_LED_COUNT                  10
 #define WS2812_LED_BIT_COUNT              24  // 24 bits per led - 8 bits each red/green/blue
 
-#define SHARED_MEM_SIZE       (WS2812_LED_COUNT * sizeof(uint32_t))
+#define SHARED_MEM_SIZE       ((WS2812_LED_COUNT + SHARED_MEM_LED_START_OFFSET) * sizeof(uint32_t))
 
 
 #endif

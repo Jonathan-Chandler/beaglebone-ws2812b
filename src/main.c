@@ -27,8 +27,8 @@ int main(void)
   }
 
   // shared_mem_map = mmap((void *)SHARED_MEM_START_ADDR, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, 0);
-  // shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
-  shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
+  shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
+  //shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
   if (shared_mem_map == MAP_FAILED) 
   {
     close(shared_mem_fd);
@@ -39,13 +39,14 @@ int main(void)
   // all blue
   for (int i = 0; i < WS2812_LED_COUNT; i++)
   {
-    leds[SHARED_MEM_LED_START_OFFSET + i] = WS2812_BLUE_MASK;
+    leds[i] = WS2812_BLUE_MASK;
   }
 
   // synchronize
   for (int i = 0; i < WS2812_LED_COUNT; i++)
   {
-    shared_mem_map[i] = leds[i];
+    // shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
+    shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = 0xFF;
   }
 
   // set LED count
@@ -75,7 +76,7 @@ int main(void)
 //  }
 
   // if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
-  if (munmap((void *)shared_mem_map, SHARED_MEM_SIZE) == -1) 
+  if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
   {
     close(shared_mem_fd);
     perror("Error unmapping");

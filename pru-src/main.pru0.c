@@ -41,32 +41,46 @@ void main(void)
   // 9_14
   while (1)
   {
-    //if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
-    //{
-    //  led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET];
+    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
+    {
+      led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET];
 
-    //  // loop over led colors
-    //  for (led_num = 0; led_num < led_count; led_num++)
-    //  {
-    //    // loop over color bits for this led
-    //    for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
-    //    {
-    //      if (shared_mem[led_num] & (1 << bit_num))
-    //      {
-    //        // delay_time set 1
-    //        __R30 = P9_30;
-    //        __delay_cycles(100000000/5);    // Wait 1/2 second
-    //      }
-    //      else
-    //      {
-    //        // delay_time set 0
+      // loop over led colors
+      for (led_num = 0; led_num < led_count; led_num++)
+      {
+        // loop over color bits for this led
+        for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
+        {
+          if (shared_mem[led_num] & (1 << bit_num))
+          {
+            // delay_time set 1
+            __R30 = P9_30;
+            __delay_cycles(180);
+            __R30 = 0;
+            __delay_cycles(70);
+          }
+          else
+          {
+            // delay_time set 0
+            __R30 = P9_30;
+            __delay_cycles(70);
+            __R30 = 0;
+            __delay_cycles(180);
+            //        
+          }
+        }
+      }
+
+      // reset begin write trigger
+      shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
+    }
+
+    __R30 = 0;
+    __delay_cycles(100000/5);    // Wait 1/2 second
+  }
+
     //        __R30 = 0;
     //        __delay_cycles(100000000/5);    // Wait 1/2 second
-    //      }
-    //    }
-    //  }
-    //}
-
     //        // gpio1[GPIO_SETDATAOUT]   = USR0 | USR1 | USR2 | USR3;			// led test
     //
     //        __R30 = P9_30;
@@ -85,14 +99,13 @@ void main(void)
     //      }
 
     // test
-           // echo "pruout" > /sys/devices/platform/ocp/ocp\:P9_30_pinmux/state
+    // echo "pruout" > /sys/devices/platform/ocp/ocp\:P9_30_pinmux/state
     // __delay_cycles(100);    // 2 mhz (500 ns)
 
-    __R30 = P9_30;
-    __delay_cycles(180);    // 2 mhz (500 ns)
-    __R30 = 0;
-    __delay_cycles(70);    // 2 mhz (500 ns)
-  }
+    // __R30 = P9_30;
+    // __delay_cycles(180);    // 2 mhz (500 ns)
+    // __R30 = 0;
+    // __delay_cycles(70);    // 2 mhz (500 ns)
 
   __halt();
 }
