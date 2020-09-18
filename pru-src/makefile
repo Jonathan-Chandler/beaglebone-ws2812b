@@ -1,4 +1,3 @@
-
 # jonathan@beaglebone:/$ cat /var/lib/cloud9/common/Makefile 
 #
 # Optional definitions
@@ -19,6 +18,7 @@
 # TIDL_API_DIR points to the TIDL API install directory.
 # GEN_DIR points to where to build the binaries.
 # MODEL is the board model (BeagleBoard.org_BeagleBone_AI, TI_AM335x_BeagleBone_Blue, etc.)
+INCLUDES:=-I../inc
 COMMON:=$(abspath $(lastword $(MAKEFILE_LIST)/..))
 PRU_CGT:=/usr/share/ti/cgt-pru
 PRU_SUPPORT:=/usr/lib/ti/pru-software-support-package
@@ -214,7 +214,7 @@ $(GEN_DIR)/%.o: %.c
 	@echo 'CC	$^'
 	$(eval $(call target-to-proc,$@))
 	$(eval $(call proc-to-build-vars,$@))
-	@$(CC) $@ $^ $(CFLAGS)
+	@$(CC) $@ $^ $(CFLAGS) $(INCLUDES)
 
 $(GEN_DIR)/%.o: %.cpp
 	@mkdir -p $(GEN_DIR)

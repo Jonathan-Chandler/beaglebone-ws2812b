@@ -19,16 +19,11 @@
 #include <stdint.h>
 #include <pru_cfg.h>
 #include "resource_table_empty.h"
+#include "share.h"
 #include "prugpio.h"
 
 volatile register unsigned int __R30;
 volatile register unsigned int __R31;
-
-#define SHARED_MEM_LED_BEGIN_WRITE_OFFSET 0x0
-#define SHARED_MEM_LED_COUNT_OFFSET       0x1
-#define SHARED_MEM_LED_START_OFFSET       0x2
-#define WS2812_LED_COUNT                  10
-#define WS2812_LED_BIT_COUNT              24  // 24 bits per led - 8 bits each red/green/blue
 
 void main(void) 
 {
@@ -102,6 +97,7 @@ void main(void)
   __halt();
 }
 
+//  "/sys/class/gpio/export\0 105 \0" \
 // Turns off triggers
 #pragma DATA_SECTION(init_pins, ".init_pins")
 #pragma RETAIN(init_pins)
@@ -110,5 +106,6 @@ const char init_pins[] =
 	"/sys/class/leds/beaglebone:green:usr1/trigger\0none\0" \
 	"/sys/class/leds/beaglebone:green:usr2/trigger\0none\0" \
 	"/sys/class/leds/beaglebone:green:usr3/trigger\0none\0" \
+  "/sys/devices/platform/ocp/ocp\:P9_30_pinmux/state\0 pruout \0" \
 	"\0\0";
 
