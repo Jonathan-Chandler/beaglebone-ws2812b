@@ -35,6 +35,7 @@ void main(void)
   uint32_t  led_count = 0;
   uint32_t  *gpio1 = (uint32_t *)GPIO1;
   uint32_t  *shared_mem = (uint32_t *)AM33XX_PRUSS_SHAREDRAM_BASE;
+  uint32_t delay_cycles = 0;
   // AM33XX_PRUSS_SHAREDRAM_BASE = 0x4a310000
   // local/global shared data 12K Ram 2: 0x10000
   // PRU_SHAREDMEM   : org = 0x00010000 len = 0x00003000 CREGISTER=28 /* 12kB Shared RAM */
@@ -125,6 +126,18 @@ void main(void)
 #define EHRPWM_AQCTLB_ZRO_FORCE_LOW (0x1)
 #define EHRPWM_AQCTLB_ZRO_FORCE_HIGH (0x2)
 
+#define EHRPWM_CMPCTL_OFFSET        0xE
+#define EHRPWM_CMPCTL_SHDWBFULL     (0x1 << 9) // shadow buffer B is full
+#define EHRPWM_CMPCTL_SHDWBMODE_DIS (0x1 << 6) // disable shadow buffer for pwm B
+#define EHRPWM_CMPCTL_LOADBMODE_Z   (0x0 << 6) // load when time base equal to zero
+#define EHRPWM_CMPCTL_LOADBMODE_P   (0x1 << 6) // load when time base equal to period
+#define EHRPWM_CMPCTL_LOADBMODE_A   (0x3 << 6) // load when time base equal to period or zero
+
+#define EHRPWM_AQCSFRC_OFFSET       0x1C
+#define EHRPWM_AQCSFRC_CSFB_N       (0x0 << 2)  // do not force pwm
+#define EHRPWM_AQCSFRC_CSFB_L       (0x1 << 2)  // force PWM B low
+#define EHRPWM_AQCSFRC_CSFB_H       (0x2 << 2)  // force PWM B high
+
 // CMPB - 0x14 compared to tbcnt / shadowed
 // pull nothing/low/high/toggle
 //
@@ -144,6 +157,9 @@ void main(void)
   volatile uint16_t *ehr_pcctl = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_PCCTL_OFFSET);
   volatile uint16_t *ehr_tbprd = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_TBPRD_OFFSET);
   volatile uint16_t *ehr_aqctlb = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_AQCTLB_OFFSET);
+  volatile uint16_t *ehr_cmpctl = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_CMPCTL_OFFSET);
+  volatile uint16_t *ehr_aqcsfrc = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_AQCSFRC_OFFSET);
+  
 
   *flag_etps = EHRPWM_ETPS_1_EVENT; // event count
   //*flag_etps = 0; // event count
@@ -151,90 +167,91 @@ void main(void)
   //*flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_PRD;  // interrupt selection
   *flag_etclr = EHRPWM_ETCLR_CLEAR;
   *ehr_tbprd = 10000;
-  *ehr_pcctl = 0;
-  //*ehr_tbprd = 1199; // ~12083 ns
-  //*ehr_tbprd = 2000; // ~20000 ns
-  *ehr_tbprd = 125; //
+  //*ehr_pcctl = 0; // not using pcctl
+  *ehr_tbprd = 125; // 1250 ns
 
+  *ehr_cmpb = 0;
+
+  // PWM force high at timer equal 0 / force low after timer equal to CMPB
   *ehr_aqctlb = EHRPWM_AQCTLB_CBU_FORCE_LOW | EHRPWM_AQCTLB_ZRO_FORCE_HIGH; // force high at 0 / force low after B
-  int test = 0;
   
-  // 9_14
+  // initialize to write finished
+  shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
+
+  // disable force pwm low
+  *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
+
   while (1)
   {
-    if (*flag_status & EHRPWM_ETFLG_SET)
+    // load next value if shadow buffer is empty
+    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
     {
-      __R30 = P9_30; // pulse D3
-      if (test)
+      // read # leds from shared memory
+      led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET]; 
+
+
+      // loop over LEDs
+      for (led_num = 0; led_num < led_count; led_num++)
       {
-        //*ehr_tbprd = 10; // 333 ns
-        //*ehr_tbprd = 1; // ~292 ns
-        *ehr_cmpb = 90;
-        //*ehr_pcctl = EHRPWM_PCCTL_DUTY_25 | EHRPWM_PCCTL_CHP_EN;
-        test = 0;
+        // loop over color bits for current LED
+        for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
+        {
+          // get current color bit
+          if (shared_mem[SHARED_MEM_LED_START_OFFSET + led_num] & (1 << bit_num))
+          {
+            // ws2812 duty cycle to set bit to 1
+            *ehr_cmpb = 90;
+          }
+          else
+          {
+            // ws2812 duty cycle to set bit to 0
+            *ehr_cmpb = 35;
+          }
+
+          // delay until shadow buffer is empty
+          while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+            ;
+        }
       }
-      else
+
+      // delay until shadow buffer is empty
+      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+        ;
+
+      // dummy PWM duty cycle that will be ignored
+      *ehr_cmpb = 1;
+
+      // delay until shadow buffer is empty
+      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+        ;
+
+      // force PWM low to before dummy value is used
+      *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_L;
+
+      // reset by holding low for >50 microseconds
+      for (delay_cycles = 0; delay_cycles < 50; delay_cycles++)
       {
-        //*ehr_aqctlb = EHRPWM_AQCTLB_PRD_FORCE_LOW;
-        //*ehr_tbprd = 1199; // ~12083 ns
-        //*ehr_pcctl = EHRPWM_PCCTL_DUTY_75 | EHRPWM_PCCTL_CHP_EN;
-        //*ehr_cmpb = 100;
-        *ehr_cmpb = 35;
-        test = 1;
+          // delay until shadow buffer is empty
+          while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+            ;
+
+          // set PWM duty cycle to 0 
+          *ehr_cmpb = 0;
       }
-      //__delay_cycles(100);
-      *flag_etclr = EHRPWM_ETCLR_CLEAR;
-      // __delay_cycles(100);
+      
+      // disable pwm force low
+      *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
+
+      // signal that the write is finished
+      shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
     }
 
-    __R30 = 0; // pulse D3
-    //__R30 = P9_30; // pulse D3
-    //__delay_cycles(1000);
-    //__R30 = 0;
-    //__delay_cycles(1000);
-    // P8.13 pwm - pulse D5
+    // poll delay
+    __delay_cycles(10000);
   }
 
-    // if (ETFLG[INT])
-    // {
-    // }
-//    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
-//    {
-//      led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET];
-//
-//      // loop over led colors
-//      for (led_num = 0; led_num < led_count; led_num++)
-//      {
-//        // loop over color bits for this led
-//        for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
-//        {
-//          if (shared_mem[led_num] & (1 << bit_num))
-//          {
-//            // delay_time set 1
-//            __R30 = P9_30;
-//            __delay_cycles(180);
-//            __R30 = 0;
-//            __delay_cycles(70);
-//          }
-//          else
-//          {
-//            // delay_time set 0
-//            __R30 = P9_30;
-//            __delay_cycles(70);
-//            __R30 = 0;
-//            __delay_cycles(180);
-//            //        
-//          }
-//        }
-//      }
-//
-//      // reset begin write trigger
-//      shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
-//    }
-//
-//    __R30 = 0;
-//    __delay_cycles(100000/5);    // Wait 1/2 second
-//  }
+  __halt();
+}
 
     //        __R30 = 0;
     //        __delay_cycles(100000000/5);    // Wait 1/2 second
@@ -264,8 +281,43 @@ void main(void)
     // __R30 = 0;
     // __delay_cycles(70);    // 2 mhz (500 ns)
 
-  __halt();
-}
+//  // 9_14
+//  while (1)
+//  {
+//    // load next value if shadow buffer is empty
+//    if (!(*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL))
+//    {
+//      __R30 = P9_30; // pulse D3
+//      if (test)
+//      {
+//        //*ehr_tbprd = 10; // 333 ns
+//        //*ehr_tbprd = 1; // ~292 ns
+//        *ehr_cmpb = 90;
+//        //*ehr_pcctl = EHRPWM_PCCTL_DUTY_25 | EHRPWM_PCCTL_CHP_EN;
+//        test = 0;
+//      }
+//      else
+//      {
+//        //*ehr_aqctlb = EHRPWM_AQCTLB_PRD_FORCE_LOW;
+//        //*ehr_tbprd = 1199; // ~12083 ns
+//        //*ehr_pcctl = EHRPWM_PCCTL_DUTY_75 | EHRPWM_PCCTL_CHP_EN;
+//        //*ehr_cmpb = 100;
+//        *ehr_cmpb = 35;
+//        test = 1;
+//      }
+//      //__delay_cycles(100);
+//      *flag_etclr = EHRPWM_ETCLR_CLEAR;
+//      // __delay_cycles(100);
+//    }
+//
+//    __R30 = 0; // pulse D3
+//    //__R30 = P9_30; // pulse D3
+//    //__delay_cycles(1000);
+//    //__R30 = 0;
+//    //__delay_cycles(1000);
+//    // P8.13 pwm - pulse D5
+//  }
+
 // 1. Disableglobalinterrupts(CPUINTMflag)
 // 2. Disable ePWM interrupts
 // 3. Initializeperipheralregisters
