@@ -209,7 +209,7 @@ void main(void)
   while (1)
   {
     // load next value if shadow buffer is empty
-//    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
+    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
     {
       // read # leds from shared memory
       led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET]; 
@@ -226,11 +226,11 @@ void main(void)
         // loop over color bits for current LED
         for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
         {
-          uint32_t value = 0x800003;
+          // uint32_t value = 0x800003;
+          //if (value & (1 << bit_num))
 
           // get current color bit
-          //if (shared_mem[SHARED_MEM_LED_START_OFFSET + led_num] & (1 << bit_num))
-          if (value & (1 << bit_num))
+          if (shared_mem[SHARED_MEM_LED_START_OFFSET + led_num] & (1 << bit_num))
           {
             // ws2812 duty cycle to set bit to 1
             *ehr_cmpb = 90;
@@ -324,7 +324,7 @@ void main(void)
 
 #endif
       // signal that the write is finished
-      //shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
+      shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
     }
 
     // poll delay

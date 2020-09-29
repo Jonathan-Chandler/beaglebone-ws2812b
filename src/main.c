@@ -87,8 +87,7 @@ int main(void)
     leds[led_num] = 0;
   }
 
-  leds[led_num] = 0x800001; // 1000 0000 0000 0000 0000 0001 
-#if 1
+#if 0
   uint32_t i;
   uint32_t x;
   for (i = 0; i < 10; i++)
