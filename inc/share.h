@@ -7,7 +7,7 @@
 #define SHARED_MEM_LED_BEGIN_WRITE_OFFSET 0x0
 #define SHARED_MEM_LED_COUNT_OFFSET       0x1
 #define SHARED_MEM_LED_START_OFFSET       0x2
-#define WS2812_LED_COUNT                  140 // 150 leds
+#define WS2812_LED_COUNT                  150 // 150 leds
 #define WS2812_LED_BIT_COUNT              24  // 24 bits per led - 8 bits each red/green/blue
 
 

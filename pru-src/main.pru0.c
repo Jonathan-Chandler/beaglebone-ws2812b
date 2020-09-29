@@ -30,7 +30,7 @@ volatile register unsigned int __R31;
 
 void main(void) 
 {
-  uint8_t   bit_num = 0;
+  uint32_t  bit_num = 0;
   uint32_t  led_num = 0;
   uint32_t  led_count = 0;
   uint32_t  *gpio1 = (uint32_t *)GPIO1;
@@ -44,6 +44,7 @@ void main(void)
   CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
   // config-pin P8.13 pwm
+  // echo 0 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/export
   // echo 1 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/export
   // echo 1250 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/pwm-7\:1/period
   // - 1 bit
@@ -106,6 +107,7 @@ void main(void)
 
 #define EHRPWM_CMPB_OFFSET      0x14
 #define EHRPWM_CMPB_MASK        0xFFFF
+
 #define EHRPWM_PCCTL_OFFSET     0x3C
 #define EHRPWM_PCCTL_DUTY_MASK (0x7 << 8)
 #define EHRPWM_PCCTL_DUTY_25   (0x1 << 8)
@@ -129,14 +131,28 @@ void main(void)
 #define EHRPWM_CMPCTL_OFFSET        0xE
 #define EHRPWM_CMPCTL_SHDWBFULL     (0x1 << 9) // shadow buffer B is full
 #define EHRPWM_CMPCTL_SHDWBMODE_DIS (0x1 << 6) // disable shadow buffer for pwm B
-#define EHRPWM_CMPCTL_LOADBMODE_Z   (0x0 << 6) // load when time base equal to zero
-#define EHRPWM_CMPCTL_LOADBMODE_P   (0x1 << 6) // load when time base equal to period
-#define EHRPWM_CMPCTL_LOADBMODE_A   (0x3 << 6) // load when time base equal to period or zero
+#define EHRPWM_CMPCTL_LOADBMODE_Z   (0x0 << 2) // load when time base equal to zero
+#define EHRPWM_CMPCTL_LOADBMODE_P   (0x1 << 2) // load when time base equal to period
+#define EHRPWM_CMPCTL_LOADBMODE_A   (0x2 << 2) // load when time base equal to period or zero
+#define EHRPWM_CMPCTL_LOADBMODE_F   (0x3 << 2) // freeze
+
+
+#define EHRPWM_AQSFRC_OFFSET        0x1A
+#define EHRPWM_AQSFRC_OTSFB         (0x1 << 5) // one-time software force B
+#define EHRPWM_AQSFRC_ACTSFB_C      (0x1 << 3) // one-time event - clear
+#define EHRPWM_AQSFRC_ACTSFB_S      (0x2 << 3) // one-time event - set
+
 
 #define EHRPWM_AQCSFRC_OFFSET       0x1C
 #define EHRPWM_AQCSFRC_CSFB_N       (0x0 << 2)  // do not force pwm
 #define EHRPWM_AQCSFRC_CSFB_L       (0x1 << 2)  // force PWM B low
 #define EHRPWM_AQCSFRC_CSFB_H       (0x2 << 2)  // force PWM B high
+#define EHRPWM_RLDCSF_LOAD_Z        (0x0 << 6)  // load shadow register when counter equals zero
+#define EHRPWM_RLDCSF_LOAD_P        (0x1 << 6)  // load shadow register when counter equals period
+#define EHRPWM_RLDCSF_CSFB_H        (0x2 << 6)  // load shadow register when counter equals either zero or period
+
+#define EHRPWM_TBPHS_OFFSET         0x6
+
 
 // CMPB - 0x14 compared to tbcnt / shadowed
 // pull nothing/low/high/toggle
@@ -159,15 +175,22 @@ void main(void)
   volatile uint16_t *ehr_aqctlb = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_AQCTLB_OFFSET);
   volatile uint16_t *ehr_cmpctl = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_CMPCTL_OFFSET);
   volatile uint16_t *ehr_aqcsfrc = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_AQCSFRC_OFFSET);
+  volatile uint16_t *ehr_tbphs = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_TBPHS_OFFSET);
+  volatile uint16_t *ehr_aqsfrc = (volatile uint16_t*)(EHRPWM2_BASE + EHRPWM_AQSFRC_OFFSET);
   
+  
+  *ehr_cmpctl = EHRPWM_CMPCTL_LOADBMODE_Z;
+//  *ehr_cmpctl = EHRPWM_CMPCTL_LOADBMODE_P;
+  // EHRPWM_CMPCTL_LOADBMODE_P
+
+  *flag_etps = 0; // event count
+  *flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_PRD;  // interrupt selection
+  *ehr_pcctl = 0; // not using pcctl
 
   *flag_etps = EHRPWM_ETPS_1_EVENT; // event count
-  //*flag_etps = 0; // event count
-  *flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_ZERO;  // interrupt selection
-  //*flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_PRD;  // interrupt selection
+//  *flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_ZERO;  // interrupt selection
   *flag_etclr = EHRPWM_ETCLR_CLEAR;
-  *ehr_tbprd = 10000;
-  //*ehr_pcctl = 0; // not using pcctl
+  //*ehr_tbprd = 10000;
   *ehr_tbprd = 125; // 1250 ns
 
   *ehr_cmpb = 0;
@@ -180,15 +203,22 @@ void main(void)
 
   // disable force pwm low
   *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
+  *ehr_tbphs = 0;
+  *ehr_cmpctl = EHRPWM_CMPCTL_LOADBMODE_P;
 
   while (1)
   {
     // load next value if shadow buffer is empty
-    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
+//    if (shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] > 0)
     {
       // read # leds from shared memory
       led_count = shared_mem[SHARED_MEM_LED_COUNT_OFFSET]; 
 
+      *flag_etclr = EHRPWM_ETCLR_CLEAR;
+
+      // delay until shadow buffer is empty
+      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+        ; 
 
       // loop over LEDs
       for (led_num = 0; led_num < led_count; led_num++)
@@ -196,8 +226,11 @@ void main(void)
         // loop over color bits for current LED
         for (bit_num = 0; bit_num < WS2812_LED_BIT_COUNT; bit_num++)
         {
+          uint32_t value = 0x800003;
+
           // get current color bit
-          if (shared_mem[SHARED_MEM_LED_START_OFFSET + led_num] & (1 << bit_num))
+          //if (shared_mem[SHARED_MEM_LED_START_OFFSET + led_num] & (1 << bit_num))
+          if (value & (1 << bit_num))
           {
             // ws2812 duty cycle to set bit to 1
             *ehr_cmpb = 90;
@@ -210,10 +243,57 @@ void main(void)
 
           // delay until shadow buffer is empty
           while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
-            ;
+              ; 
         }
       }
+      
+      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+        ; 
+      *ehr_cmpb = 0;
+//      *ehr_aqsfrc = EHRPWM_AQSFRC_OTSFB | EHRPWM_AQSFRC_ACTSFB_C;
+//
+      //while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+      //  ; 
+      //*ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_L;
 
+      // *ehr_aqsfrc = EHRPWM_AQSFRC_OTSFB | EHRPWM_AQSFRC_ACTSFB_C;
+      __delay_cycles(10000);
+
+
+      //// set PWM duty cycle to 0 
+      //*ehr_cmpb = 0;
+
+      //while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+      //  ;
+ 
+////      // set PWM duty cycle to 0 
+////      *ehr_cmpb = 1;
+////
+////      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+////        ;
+////      
+////      // force PWM low to before dummy value is used
+////      *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_L;
+////
+////      // set PWM duty cycle to 0 
+////      *ehr_cmpb = 0;
+////
+////      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+////        ;
+////      
+////      // force PWM low to before dummy value is used
+////      *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
+////
+//      // delay until shadow buffer is empty
+//      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+//        ;
+
+
+//      // delay until shadow buffer is empty
+//      while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
+//        ;
+
+#if 0
       // delay until shadow buffer is empty
       while (*ehr_cmpctl & EHRPWM_CMPCTL_SHDWBFULL)
         ;
@@ -242,8 +322,9 @@ void main(void)
       // disable pwm force low
       *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
 
+#endif
       // signal that the write is finished
-      shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
+      //shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
     }
 
     // poll delay
@@ -407,7 +488,6 @@ const char init_pins[] =
 	"/sys/class/leds/beaglebone:green:usr1/trigger\0none\0" \
 	"/sys/class/leds/beaglebone:green:usr2/trigger\0none\0" \
 	"/sys/class/leds/beaglebone:green:usr3/trigger\0none\0" \
-  "/sys/devices/platform/ocp/ocp\:P9_30_pinmux/state\0 pruout \0" \
   "/sys/devices/platform/ocp/ocp\:P9_30_pinmux/state\0 pruout \0" \
 	"\0\0";
 

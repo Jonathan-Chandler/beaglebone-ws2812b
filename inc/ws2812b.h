@@ -6,7 +6,7 @@
 // 1 cycle   = 1000 us = 1000 ms = 800 khz
 // 1.250 uS     1 ms       1 s
 
-#define WS2812_LED_COUNT              140 // 150 leds
+#define WS2812_LED_COUNT              150 // 150 leds
 
 #define WS2812_DUTY_CYCLE_SIGNAL_0    28    // 350 / 1250 = 28%
 #define WS2812_DUTY_CYCLE_SIGNAL_1    72    // 900 / 1250 = 72%

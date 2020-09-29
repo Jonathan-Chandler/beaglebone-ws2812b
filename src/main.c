@@ -11,13 +11,28 @@
 #include "ws2812b.h"
 #include "share.h"
 
-int main(void)
+uint32_t leds[WS2812_LED_COUNT];
+
+uint32_t reverse_8bit(uint32_t value)
 {
-  int result;
-  uint32_t leds[WS2812_LED_COUNT];
+  uint32_t bit_num;
+  uint32_t reversed_value = 0;
+
+  for (bit_num = 0; bit_num < 8; bit_num++)
+  {
+    if ((0x80 >> bit_num) & value)
+    {
+      reversed_value |= (1 << bit_num);
+    }
+  }
+
+  return reversed_value;
+}
+
+void synchronize_leds(uint32_t led_count)
+{
   int shared_mem_fd;
   volatile uint32_t *shared_mem_map;
-  printf("%d\n", getpagesize());
 
   shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
   if (shared_mem_fd < 0)
@@ -26,9 +41,7 @@ int main(void)
     exit(EXIT_FAILURE);
   }
 
-  // shared_mem_map = mmap((void *)SHARED_MEM_START_ADDR, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, 0);
   shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
-  //shared_mem_map = mmap(0, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
   if (shared_mem_map == MAP_FAILED) 
   {
     close(shared_mem_fd);
@@ -36,24 +49,14 @@ int main(void)
     exit(EXIT_FAILURE);
   }
 
-  // all blue
-  for (int i = 0; i < WS2812_LED_COUNT; i++)
-  {
-    // leds[i] = WS2812_RED_MASK | WS2812_BLUE_MASK;
-    leds[i] = (128 << WS2812_GREEN_OFFSET) & WS2812_GREEN_MASK;
-    leds[i] = (0 << WS2812_RED_OFFSET) & WS2812_RED_MASK;
-    leds[i] = (255 << WS2812_BLUE_OFFSET) & WS2812_BLUE_MASK;
-  }
-
   // synchronize
-  for (int i = 0; i < WS2812_LED_COUNT; i++)
+  for (int i = 0; i < led_count; i++)
   {
-    // shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
     shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
   }
 
   // set LED count
-  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = WS2812_LED_COUNT;
+  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
 
   // start writing led colors
   shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
@@ -68,6 +71,86 @@ int main(void)
 
   close(shared_mem_fd);
   printf("Wrote shared memory\n");
+}
+
+int main(void)
+{
+  uint32_t menu_selection;
+  uint32_t red_value;
+  uint32_t green_value;
+  uint32_t blue_value;
+  uint32_t color_value;
+  uint32_t led_num;
+
+  for (led_num = 0; led_num < WS2812_LED_COUNT; led_num++)
+  {
+    leds[led_num] = 0;
+  }
+
+  leds[led_num] = 0x800001; // 1000 0000 0000 0000 0000 0001 
+#if 1
+  uint32_t i;
+  uint32_t x;
+  for (i = 0; i < 10; i++)
+  {
+    synchronize_leds(1);
+
+    for (x = 0; x < 100000; x++)
+    {
+      asm("nop");
+    }
+  }
+  return 0;
+#endif
+
+  while (1)
+  {
+    printf("0: Exit\n");
+    printf("1: Set colors\n");
+    printf("2: Synchronize\n");
+    scanf("%d", &menu_selection);
+
+    if (menu_selection < 1 || menu_selection > 2)
+    {
+      break;
+    }
+    else if (menu_selection == 1)
+    {
+      printf("Red: ");
+      scanf("%u", &red_value);
+      printf("Green: ");
+      scanf("%u", &green_value);
+      printf("Blue: ");
+      scanf("%u", &blue_value);
+
+      red_value = reverse_8bit(red_value);
+      green_value = reverse_8bit(green_value);
+      blue_value = reverse_8bit(blue_value);
+
+      color_value  = (red_value << WS2812_RED_OFFSET) & WS2812_RED_MASK;
+      color_value |= (green_value << WS2812_GREEN_OFFSET) & WS2812_GREEN_MASK;
+      color_value |= (blue_value << WS2812_BLUE_OFFSET) & WS2812_BLUE_MASK;
+
+      for (led_num = 0; led_num < WS2812_LED_COUNT; led_num++)
+      {
+        leds[led_num] = color_value;
+      }
+
+      synchronize_leds(WS2812_LED_COUNT);
+    }
+    else if (menu_selection == 2)
+    {
+      synchronize_leds(WS2812_LED_COUNT);
+    }
+
+//    for (int i = 0; i < WS2812_LED_COUNT; i++)
+//    {
+//      leds[i] = (128 << WS2812_GREEN_OFFSET) & WS2812_GREEN_MASK;
+//      leds[i] = (0 << WS2812_RED_OFFSET) & WS2812_RED_MASK;
+//      leds[i] = (255 << WS2812_BLUE_OFFSET) & WS2812_BLUE_MASK;
+//    }
+  }
+
 }
 
 // EHRPWM1A = 9_14
