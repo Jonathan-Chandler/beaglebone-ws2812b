@@ -12,9 +12,13 @@ OBJ_NAME = leds
 build/%.o: src/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-all: $(OBJS)
+all: mk_dirs $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(OBJ_NAME)
-	TARGET=main.pru0 make -C ./pru-src all
+	#TARGET=main.pru0 make -C ./pru-src all
+	make -C ./test all
+
+mk_dirs: 
+	mkdir -p build
 
 clean:
 	rm build/* leds
