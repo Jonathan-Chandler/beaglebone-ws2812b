@@ -5,9 +5,10 @@
 #include "led.h"
 #include "led_test.h"
 
-const LED_TEST *led_test[LED_TEST_COUNT] = {led_test_strip_init, led_test_strip_destroy, led_test_set_single, led_test_set_range, led_test_set_all};
+LED_TEST *led_test[] = {led_test_strip_init, led_test_strip_destroy, led_test_set_single, led_test_set_range, led_test_set_all, led_test_read_write};
 const int led_test_count = sizeof(led_test)/sizeof(led_test[0]);
 
+#define TEST_LED_COUNT  5
 #define TEST_RED_VAL    123
 #define TEST_GREEN_VAL  124
 #define TEST_BLUE_VAL   125
@@ -36,14 +37,14 @@ int led_test_strip_destroy()
   default_color.green = TEST_GREEN_VAL;
   default_color.blue = TEST_BLUE_VAL;
 
-  led_strip = led_strip_init(5, &default_color);
+  led_strip = led_strip_init(TEST_LED_COUNT, &default_color);
 
   // attempt using pointer to default color
   ASSERT_EQUAL(TEST_RED_VAL, led_strip->led_colors[4].red);
   ASSERT_EQUAL(TEST_BLUE_VAL, led_strip->led_colors[4].blue);
   ASSERT_EQUAL(TEST_GREEN_VAL, led_strip->led_colors[0].green);
   ASSERT_EQUAL(TEST_RED_VAL, led_strip->led_colors[0].red);
-  ASSERT_EQUAL(5, led_strip->led_count);
+  ASSERT_EQUAL(TEST_LED_COUNT, led_strip->led_count);
 
   // deallocate null led_strip
   ASSERT_EQUAL(-1, led_strip_destroy(NULL));
@@ -54,7 +55,7 @@ int led_test_strip_destroy()
   ASSERT_EQUAL(-1, led_strip_destroy(led_strip));
 
   // normal deallocation
-  led_strip = led_strip_init(5, &default_color);
+  led_strip = led_strip_init(TEST_LED_COUNT, &default_color);
   ASSERT_NOT_EQUAL(-1, led_strip_destroy(led_strip));
 
   return 0;
@@ -78,8 +79,8 @@ int led_test_set_single()
   new_color.blue = NEW_TEST_BLUE_VAL;
 
   // set invalid index
-  led_strip = led_strip_init(5, &default_color);
-  ASSERT_EQUAL(-1, led_set_single(led_strip, 5, &new_color));
+  led_strip = led_strip_init(TEST_LED_COUNT, &default_color);
+  ASSERT_EQUAL(-1, led_set_single(led_strip, TEST_LED_COUNT, &new_color));
 
   // set null new color
   ASSERT_EQUAL(-1, led_set_single(led_strip, 0, NULL));
@@ -120,7 +121,7 @@ int led_test_set_range()
   new_color.blue = NEW_TEST_BLUE_VAL;
 
   // set invalid index
-  led_strip = led_strip_init(5, &default_color);
+  led_strip = led_strip_init(TEST_LED_COUNT, &default_color);
   ASSERT_EQUAL(-1, led_set_range(led_strip, 5, 1, &new_color));
   ASSERT_EQUAL(-1, led_set_range(led_strip, 4, 2, &new_color));
   ASSERT_EQUAL(-1, led_set_range(led_strip, 3, 0, &new_color));
@@ -176,7 +177,7 @@ int led_test_set_all()
   new_color.blue = NEW_TEST_BLUE_VAL;
 
   // allocate
-  led_strip = led_strip_init(5, &default_color);
+  led_strip = led_strip_init(TEST_LED_COUNT, &default_color);
   ASSERT_NOT_EQUAL(NULL, led_strip);
 
   // set null color
@@ -200,3 +201,49 @@ int led_test_set_all()
 
   return 0;
 }
+
+int led_test_read_write()
+{
+  const char *test_file = "test_led.dat";
+  led_color_t default_color;
+  led_strip_t *write_strip = NULL;
+  led_strip_t *read_strip = NULL;
+
+  default_color.red = TEST_RED_VAL;
+  default_color.green = TEST_GREEN_VAL;
+  default_color.blue = TEST_BLUE_VAL;
+
+  // allocate
+  write_strip = led_strip_init(TEST_LED_COUNT, &default_color);
+  ASSERT_NOT_EQUAL(NULL, write_strip);
+
+  // don't allow null led pointer
+  ASSERT_NOT_EQUAL(0, led_write_file(NULL, test_file));
+
+  // don't allow null file name pointer
+  ASSERT_NOT_EQUAL(0, led_write_file(write_strip, NULL));
+
+  // write leds to file
+  ASSERT_EQUAL(0, led_write_file(write_strip, test_file));
+
+  // don't allow null return pointer
+  ASSERT_NOT_EQUAL(0, led_read_file(NULL, test_file));
+
+  // don't allow null file name pointer
+  ASSERT_NOT_EQUAL(0, led_read_file(&read_strip, NULL));
+
+  // attempt file read
+  ASSERT_EQUAL(0, led_read_file(&read_strip, test_file));
+  ASSERT_NOT_EQUAL(NULL, read_strip);
+
+  // compare led count / colors
+  ASSERT_EQUAL(0, memcmp(&(write_strip->led_count), &(read_strip->led_count), sizeof(uint32_t)));
+  ASSERT_EQUAL(0, memcmp(&(write_strip->led_colors[0]), &(read_strip->led_colors[0]), sizeof(led_color_t)*write_strip->led_count));
+
+  // deallocate
+  ASSERT_EQUAL(0, led_strip_destroy(read_strip));
+  ASSERT_EQUAL(0, led_strip_destroy(write_strip));
+
+  return 0;
+}
+

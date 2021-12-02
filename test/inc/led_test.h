@@ -10,7 +10,7 @@ int led_test_strip_destroy(void);
 int led_test_set_single(void);
 int led_test_set_range(void);
 int led_test_set_all(void);
-#define LED_TEST_COUNT 5
+int led_test_read_write();
 
 typedef int LED_TEST();
 

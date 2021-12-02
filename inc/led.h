@@ -22,5 +22,7 @@ int led_strip_destroy(led_strip_t *strip);
 int led_set_single(led_strip_t *strip, uint32_t index, led_color_t *new_color);
 int led_set_range(led_strip_t *strip, uint32_t begin, uint32_t count, led_color_t *new_color);
 int led_set_all(led_strip_t *strip, led_color_t *new_color);
+int led_write_file(led_strip_t *strip, const char *file_name);
+int led_read_file(led_strip_t **ret_strip, const char *file_name);
 
 #endif // __LED_H__
