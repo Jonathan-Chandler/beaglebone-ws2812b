@@ -7,34 +7,79 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "debug.h"
 #include "pru_shmem.h"
 #include "led.h"
+#include "led_cycle.h"
 #include "ws2812b.h"
 #include "share.h"
 
 extern uint32_t *leds;
 
+pru_shmem_t *global_pru_shmem;
+
 int main(void)
 {
-  pru_shmem_t* shmem_allocate(void);
+  global_pru_shmem = shmem_allocate();
+  led_cycle_t *led_cycle = NULL;
+  led_strip_t *led_strip = NULL;
+  led_color_t *default_color = NULL;
 
-  while (1)
+  // allocate shared mem to communicate to PRU
+  if (global_pru_shmem == NULL)
   {
-    red_value = reverse_8bit(200);
-    green_value = reverse_8bit(0);
-    blue_value = reverse_8bit(200);
-
-    for (led_num = 0; led_num < WS2812_LED_COUNT; led_num++)
-    {
-      leds[led_num] = color_value;
-    }
-
-    synchronize_leds(WS2812_LED_COUNT);
+    printDebug("Fail shmem allocate\n");
+    goto EXIT_FAIL;
   }
 
-  shmem_deallocate(pru_shmem_t **pru_shmem);
+  // create led cycle linked list
+  led_cycle = led_cycle_create();
+  if (led_cycle == NULL)
+  {
+    printDebug("Fail led_cycle allocate\n");
+    goto EXIT_FAIL;
+  }
+
+  // color to use for strip
+  default_color = led_color_init(200, 0, 200);
+  if (default_color == NULL)
+  {
+    printDebug("Fail default_color allocate\n");
+    goto EXIT_FAIL;
+  }
+
+  // create led strip with default color
+  led_strip = led_strip_init(WS2812_LED_COUNT, default_color);
+  if (led_strip == NULL)
+  {
+    printDebug("Fail default_color allocate\n");
+    goto EXIT_FAIL;
+  }
+
+  // add led strip to linked list
+  if (led_cycle_add_node(led_cycle, 10000, led_strip))
+  {
+    printDebug("Fail to add node\n");
+    goto EXIT_FAIL;
+  }
+
+//  while (1)
+//  {
+  // attempt writing to LEDs
+  led_cycle_write_current(led_cycle);
+//  }
+
+  shmem_deallocate(global_pru_shmem);
 
   return 0;
+
+EXIT_FAIL:
+  led_color_destroy(&default_color);
+  led_strip_destroy(led_strip);
+  led_cycle_destroy(&led_cycle);
+  shmem_deallocate(&global_pru_shmem);
+
+  return -1;
 }
 
 #if 0

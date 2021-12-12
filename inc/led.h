@@ -17,6 +17,9 @@ typedef struct
   led_color_t *led_colors;
 } led_strip_t;
 
+led_color_t *led_color_init(uint8_t red_value, uint8_t green_value, uint8_t blue_value);
+int led_color_destroy(led_color_t **led_color);
+
 led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color);
 int led_strip_destroy(led_strip_t *strip);
 int led_check_params(led_strip_t *strip);

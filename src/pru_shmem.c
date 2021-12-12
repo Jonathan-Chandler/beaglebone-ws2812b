@@ -16,6 +16,7 @@
 //#include <sys/stat.h>
 //#include <fcntl.h>
 #include <unistd.h> //getpagesize()
+#include "debug.h"
 #include "pru_shmem.h"
 #include "led.h"
 #include "ws2812b.h"
@@ -45,8 +46,8 @@ pru_shmem_t* shmem_allocate()
   }
 
   // get memory map on file descriptor
-  shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
-  if (shared_mem_map == MAP_FAILED) 
+  pru_shmem->shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, pru_shmem->shared_mem_fd, SHARED_MEM_START_ADDR);
+  if (pru_shmem->shared_mem_map == MAP_FAILED) 
   {
     printDebug("Fail to get memory map\n");
     goto exit_error;
@@ -81,9 +82,9 @@ int shmem_deallocate(pru_shmem_t **pru_shmem)
     return -1;
   }
 
-  if (pru_shmem->shared_mem_map != MAP_FAILED)
+  if ((*pru_shmem)->shared_mem_map != MAP_FAILED)
   {
-    if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
+    if (munmap((void *)(*pru_shmem)->shared_mem_map, getpagesize()) == -1) 
     {
       printDebug("FAIL to unmap\n");
       rc = -1;
@@ -91,9 +92,9 @@ int shmem_deallocate(pru_shmem_t **pru_shmem)
   }
 
   // close file desc
-  if (pru_shmem->shared_mem_fd >= 0)
+  if ((*pru_shmem)->shared_mem_fd >= 0)
   {
-    if (close(pru_shmem->shared_mem_fd))
+    if (close((*pru_shmem)->shared_mem_fd))
     {
       printDebug("FAIL to close file descriptor\n");
       rc = -1;
@@ -126,6 +127,8 @@ int shmem_check_params(pru_shmem_t *pru_shmem)
     printDebug("Bad memory map\n");
     return -1;
   }
+
+  return 0;
 }
 
 int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds)
@@ -151,17 +154,17 @@ int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds)
     return -1;
   }
 
-  // synchronize
+  // synchronize color values
   for (int i = 0; i < leds->led_count; i++)
   {
-    pru_mem->shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds->led_colors[i];
+    pru_shmem->shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds->led_colors[i].value;
   }
 
   // set LED count
-  pru_mem->shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
+  pru_shmem->shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = leds->led_count;
 
   // start writing led colors
-  pru_mem->shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
+  pru_shmem->shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
 
   return 0;
 }

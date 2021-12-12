@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "debug.h"
 #include "led.h"
+#include "share.h"
 
 // reverse single 8 bit value in order to be used by PRU
 uint32_t reverse_8bit(uint32_t value)
@@ -24,15 +25,27 @@ uint32_t reverse_8bit(uint32_t value)
 led_color_t *led_color_init(uint8_t red_value, uint8_t green_value, uint8_t blue_value)
 {
   led_color_t *led_color = calloc(1, sizeof(led_color_t));
+  if (led_color == NULL)
+  {
+    printDebug("Could not allocate led_color_t\n");
+    return NULL;
+  }
   
   led_color->red  = red_value;
   led_color->green = green_value;
   led_color->blue = blue_value;
 
-  // value converted to send to WS2812
+  // get reversed bit values for input colors
+  red_value = reverse_8bit(red_value);
+  green_value = reverse_8bit(green_value);
+  blue_value = reverse_8bit(blue_value);
+
+  // value converted to send to 32-bit value for WS2812
   led_color->value  = (red_value << WS2812_RED_OFFSET) & WS2812_RED_MASK;
   led_color->value |= (green_value << WS2812_GREEN_OFFSET) & WS2812_GREEN_MASK;
   led_color->value |= (blue_value << WS2812_BLUE_OFFSET) & WS2812_BLUE_MASK;
+
+  return led_color;
 }
 
 int led_color_destroy(led_color_t **led_color)

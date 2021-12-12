@@ -1,5 +1,10 @@
+#include <stdlib.h>
+#include "debug.h"
 #include "led_cycle.h"
 #include "pru_shmem.h"
+#include "util.h"
+
+extern pru_shmem_t *global_pru_shmem;
 
 led_cycle_t* led_cycle_create()
 {
@@ -74,6 +79,12 @@ int led_cycle_check_params(led_cycle_t *led_cycle)
     printDebug("Null led cycle list\n");
     return -1;
   }
+  
+  if (led_cycle->current == NULL)
+  {
+    printDebug("Null current led\n");
+    return -1;
+  }
 
   if (led_cycle->last == NULL)
   {
@@ -132,7 +143,7 @@ int led_cycle_add_node(led_cycle_t *led_cycle, uint32_t display_time_ms, led_str
   return 0;
 }
 
-int led_cycle_start(led_cycle_t* led_cycle)
+int led_cycle_write_current(led_cycle_t *led_cycle)
 {
   led_cycle_node_t *current_node;
 
@@ -141,47 +152,53 @@ int led_cycle_start(led_cycle_t* led_cycle)
     printDebug("Fail param check\n");
     return -1;
   }
-  current_node = led_cycle->first;
+  current_node = led_cycle->current;
 
-  while (current_node)
+  if (led_check_params(current_node->led_strip))
   {
-    if (led_check_params(current_node->led_strip))
-    {
-      printDebug("Fail param check\n");
-      return -1;
-    }
-
-    if (led_check_params(current_node->led_strip))
-    {
-      printDebug("Fail param check\n");
-      return -1;
-    }
-  }
-
-  new_node = malloc(sizeof(led_cycle_node_t));
-  if (new_node == NULL)
-  {
-    printDebug("Fail allocate new node\n");
+    printDebug("Fail param check\n");
     return -1;
   }
-  new_node->ms_delay = display_time_ms;
-  new_node->led_strip = led_strip;
-  new_node->next = NULL;
 
-  if (led_cycle->first == NULL)
+  // write the led values to shared memory
+  shmem_synchronize(global_pru_shmem, current_node->led_strip);
+  if (led_check_params(current_node->led_strip))
   {
-    // adding to empty list
-    led_cycle->first = new_node;
-    led_cycle->current = new_node;
-  }
-  else
-  {
-    // add link to this node
-    led_cycle->last->next = new_node;
+    printDebug("Fail param check\n");
+    return -1;
   }
 
-  // update final node
-  led_cycle->last = new_node;
+  // sleep to display for ms_delay milliseconds before return
+  msleep(current_node->ms_delay);
+
   return 0;
 }
 
+int led_cycle_iterate(led_cycle_t *led_cycle)
+{
+  if (led_cycle_check_params(led_cycle))
+  {
+    printDebug("Fail param check\n");
+    return -1;
+  }
+
+  if (led_cycle->current == led_cycle->last)
+  {
+    // loop back to first
+    led_cycle->current = led_cycle->first;
+  }
+  else
+  {
+    // update current to next node
+    led_cycle->current = led_cycle->current->next;
+  }
+  
+  // make sure result was valid
+  if (led_cycle->current == NULL)
+  {
+    printDebug("Fail to update current node\n");
+    return -1;
+  }
+
+  return 0;
+}
