@@ -8,12 +8,13 @@ CFLAGS = -Wall
 SOURCES = $(wildcard src/*.c)
 OBJS = $(SOURCES:src/%.c=build/%.o)
 OBJ_NAME = leds
+DEFINES = -DDEBUG_ENABLED=1
 
 build/%.o: src/%.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(DEFINES) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 all: mk_dirs $(OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(OBJ_NAME)
+	$(CC) $(DEFINES) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(OBJ_NAME)
 	#TARGET=main.pru0 make -C ./pru-src all
 	make -C ./test all
 

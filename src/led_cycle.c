@@ -95,7 +95,7 @@ int led_cycle_check_params(led_cycle_t *led_cycle)
   return 0;
 }
 
-int led_cycle_add_node(led_cycle_t *led_cycle, uint32_t display_time_ms, led_strip_t *led_strip)
+int led_cycle_node_add(led_cycle_t *led_cycle, uint32_t display_time_ms, led_strip_t *led_strip)
 {
   led_cycle_node_t *new_node;
   if (led_cycle == NULL)
