@@ -3,26 +3,14 @@
 #include "share.h"
 #include <sys/types.h>
 #include <sys/mman.h>
-// #include <sys/stat.h>
-//#include <sys/mman.h>
 #include <stdio.h>
-
-//#include <sys/types.h>
-//#include <sys/mman.h>
-//#include <stdint.h>
 #include <stdio.h>
-//#include <stdlib.h>
-
-//#include <sys/stat.h>
-//#include <fcntl.h>
 #include <unistd.h> //getpagesize()
 #include "debug.h"
 #include "pru_shmem.h"
 #include "led.h"
 #include "ws2812b.h"
 #include "share.h"
-
-//uint32_t leds[WS2812_LED_COUNT];
 
 pru_shmem_t* shmem_allocate()
 {

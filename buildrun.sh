@@ -1,4 +1,5 @@
 #!/bin/bash
 make clean
 make
-#./leds
+./scripts/pru-build.sh
+./leds
