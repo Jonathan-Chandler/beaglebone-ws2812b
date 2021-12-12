@@ -4,6 +4,56 @@
 #include "debug.h"
 #include "led.h"
 
+// reverse single 8 bit value in order to be used by PRU
+uint32_t reverse_8bit(uint32_t value)
+{
+  uint32_t bit_num;
+  uint32_t reversed_value = 0;
+
+  for (bit_num = 0; bit_num < 8; bit_num++)
+  {
+    if ((0x80 >> bit_num) & value)
+    {
+      reversed_value |= (1 << bit_num);
+    }
+  }
+
+  return reversed_value;
+}
+
+led_color_t *led_color_init(uint8_t red_value, uint8_t green_value, uint8_t blue_value)
+{
+  led_color_t *led_color = calloc(1, sizeof(led_color_t));
+  
+  led_color->red  = red_value;
+  led_color->green = green_value;
+  led_color->blue = blue_value;
+
+  // value converted to send to WS2812
+  led_color->value  = (red_value << WS2812_RED_OFFSET) & WS2812_RED_MASK;
+  led_color->value |= (green_value << WS2812_GREEN_OFFSET) & WS2812_GREEN_MASK;
+  led_color->value |= (blue_value << WS2812_BLUE_OFFSET) & WS2812_BLUE_MASK;
+}
+
+int led_color_destroy(led_color_t **led_color)
+{
+  if (led_color == NULL)
+  {
+    printDebug("receive null led_color\n");
+    return -1;
+  }
+  if (*led_color == NULL)
+  {
+    printDebug("receive null *led_color\n");
+    return -1;
+  }
+
+  free(*led_color);
+  *led_color = NULL;
+
+  return 0;
+}
+
 led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color)
 {
   led_strip_t *led_strip = NULL;
@@ -69,6 +119,29 @@ int led_strip_destroy(led_strip_t *strip)
 
   // led color list
   free(strip->led_colors);
+
+  return 0;
+}
+
+int led_check_params(led_strip_t *strip)
+{
+  if (strip == NULL)
+  {
+    printDebug("Null led strip\n");
+    return -1;
+  }
+
+  if (strip->led_count == 0)
+  {
+    printDebug("No leds in strip\n");
+    return -1;
+  }
+
+  if (strip->led_colors == NULL)
+  {
+    printDebug("Null led colors\n");
+    return -1;
+  }
 
   return 0;
 }
@@ -308,5 +381,4 @@ int led_read_file(led_strip_t **ret_strip, const char *file_name)
 
   return 0;
 }
-
 

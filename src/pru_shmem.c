@@ -21,64 +21,234 @@
 #include "ws2812b.h"
 #include "share.h"
 
-uint32_t leds[WS2812_LED_COUNT];
+//uint32_t leds[WS2812_LED_COUNT];
 
-uint32_t reverse_8bit(uint32_t value)
+pru_shmem_t* shmem_allocate()
 {
-  uint32_t bit_num;
-  uint32_t reversed_value = 0;
-
-  for (bit_num = 0; bit_num < 8; bit_num++)
+  pru_shmem_t *pru_shmem = malloc(sizeof(pru_shmem_t));
+  if (pru_shmem == NULL)
   {
-    if ((0x80 >> bit_num) & value)
-    {
-      reversed_value |= (1 << bit_num);
-    }
+    printDebug("Fail to allocate\n");
+    return NULL;
   }
 
-  return reversed_value;
-}
+  // default values if failed to get file descriptor / memory map
+  pru_shmem->shared_mem_fd = -1;
+  pru_shmem->shared_mem_map = MAP_FAILED;
 
-void synchronize_leds(uint32_t led_count)
-{
-  int shared_mem_fd;
-  volatile uint32_t *shared_mem_map;
-
-  shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-  if (shared_mem_fd < 0)
+  // open shared memory file descriptor
+  pru_shmem->shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  if (pru_shmem->shared_mem_fd < 0)
   {
-    perror("Fail to open /dev/mem");
-    exit(EXIT_FAILURE);
+    printDebug("Fail to open /dev/mem\n");
+    goto exit_error;
   }
 
+  // get memory map on file descriptor
   shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
   if (shared_mem_map == MAP_FAILED) 
   {
-    close(shared_mem_fd);
-    perror("Error mmapping");
-    exit(EXIT_FAILURE);
+    printDebug("Fail to get memory map\n");
+    goto exit_error;
+  }
+
+  return pru_shmem;
+
+exit_error:
+
+  // failed after allocating memory
+  if (pru_shmem != NULL)
+  {
+    shmem_deallocate(&pru_shmem);
+  }
+
+  return NULL;
+}
+
+int shmem_deallocate(pru_shmem_t **pru_shmem)
+{
+  int rc = 0;
+
+  if (pru_shmem == NULL)
+  {
+    printDebug("NULL shmem_t\n");
+    return -1;
+  }
+
+  if (*pru_shmem == NULL)
+  {
+    printDebug("NULL pointer to *shmem_t\n");
+    return -1;
+  }
+
+  if (pru_shmem->shared_mem_map != MAP_FAILED)
+  {
+    if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
+    {
+      printDebug("FAIL to unmap\n");
+      rc = -1;
+    }
+  }
+
+  // close file desc
+  if (pru_shmem->shared_mem_fd >= 0)
+  {
+    if (close(pru_shmem->shared_mem_fd))
+    {
+      printDebug("FAIL to close file descriptor\n");
+      rc = -1;
+    }
+  }
+
+  // deallocate struct
+  free(*pru_shmem);
+  *pru_shmem = NULL;
+
+  return rc;
+}
+
+int shmem_check_params(pru_shmem_t *pru_shmem)
+{
+  if (pru_shmem == NULL)
+  {
+    printDebug("NULL shmem\n");
+    return -1;
+  }
+
+  if (pru_shmem->shared_mem_fd < 0)
+  {
+    printDebug("Bad file descriptor\n");
+    return -1;
+  }
+
+  if (pru_shmem->shared_mem_map == MAP_FAILED)
+  {
+    printDebug("Bad memory map\n");
+    return -1;
+  }
+}
+
+int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds)
+{
+  // check shared mem was allocated
+  if (shmem_check_params(pru_shmem))
+  {
+    printDebug("Fail shmem param check\n");
+    return -1;
+  }
+
+  // check led strip is valid
+  if (led_check_params(leds))
+  {
+    printDebug("Fail led param check\n");
+    return -1;
+  }
+
+  // check allocated enough space for led count
+  if ((sizeof(uint32_t) * leds->led_count) > getpagesize())
+  {
+    printDebug("Write size > pagesize\n");
+    return -1;
   }
 
   // synchronize
-  for (int i = 0; i < led_count; i++)
+  for (int i = 0; i < leds->led_count; i++)
   {
-    shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
+    pru_mem->shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds->led_colors[i];
   }
 
   // set LED count
-  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
+  pru_mem->shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
 
   // start writing led colors
-  shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
+  pru_mem->shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
 
-  if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
-  {
-    close(shared_mem_fd);
-    perror("Error unmapping");
-    exit(EXIT_FAILURE);
-  }
-
-  close(shared_mem_fd);
-  printf("Wrote shared memory\n");
+  return 0;
 }
+
+//void synchronize_leds(uint32_t led_count)
+//{
+//  int shared_mem_fd;
+//  volatile uint32_t *shared_mem_map;
+//
+//  shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+//  if (shared_mem_fd < 0)
+//  {
+//    perror("Fail to open /dev/mem");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
+//  if (shared_mem_map == MAP_FAILED) 
+//  {
+//    close(shared_mem_fd);
+//    perror("Error mmapping");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  // synchronize
+//  for (int i = 0; i < led_count; i++)
+//  {
+//    shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
+//  }
+//
+//  // set LED count
+//  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
+//
+//  // start writing led colors
+//  shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
+//
+//  if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
+//  {
+//    close(shared_mem_fd);
+//    perror("Error unmapping");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  close(shared_mem_fd);
+//  printf("Wrote shared memory\n");
+//}
+//
+//void synchronize_leds(uint32_t led_count)
+//{
+//  int shared_mem_fd;
+//  volatile uint32_t *shared_mem_map;
+//
+//  shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+//  if (shared_mem_fd < 0)
+//  {
+//    perror("Fail to open /dev/mem");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  shared_mem_map = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, SHARED_MEM_START_ADDR);
+//  if (shared_mem_map == MAP_FAILED) 
+//  {
+//    close(shared_mem_fd);
+//    perror("Error mmapping");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  // synchronize
+//  for (int i = 0; i < led_count; i++)
+//  {
+//    shared_mem_map[SHARED_MEM_LED_START_OFFSET + i] = leds[i];
+//  }
+//
+//  // set LED count
+//  shared_mem_map[SHARED_MEM_LED_COUNT_OFFSET] = led_count;
+//
+//  // start writing led colors
+//  shared_mem_map[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 1;
+//
+//  if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
+//  {
+//    close(shared_mem_fd);
+//    perror("Error unmapping");
+//    exit(EXIT_FAILURE);
+//  }
+//
+//  close(shared_mem_fd);
+//  printf("Wrote shared memory\n");
+//}
 

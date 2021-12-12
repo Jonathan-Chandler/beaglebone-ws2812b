@@ -16,6 +16,29 @@ extern uint32_t *leds;
 
 int main(void)
 {
+  pru_shmem_t* shmem_allocate(void);
+
+  while (1)
+  {
+    red_value = reverse_8bit(200);
+    green_value = reverse_8bit(0);
+    blue_value = reverse_8bit(200);
+
+    for (led_num = 0; led_num < WS2812_LED_COUNT; led_num++)
+    {
+      leds[led_num] = color_value;
+    }
+
+    synchronize_leds(WS2812_LED_COUNT);
+  }
+
+  shmem_deallocate(pru_shmem_t **pru_shmem);
+
+  return 0;
+}
+
+#if 0
+{
   uint32_t menu_selection;
   uint32_t red_value;
   uint32_t green_value;
@@ -71,4 +94,5 @@ int main(void)
 
   return 0;
 }
+#endif
 
