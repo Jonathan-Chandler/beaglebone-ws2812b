@@ -23,4 +23,7 @@ int led_cycle_add_node(led_cycle_t *led_cycle, uint32_t display_time_ms, led_str
 int led_cycle_write_current(led_cycle_t *cycle);
 int led_cycle_write_and_iterate(led_cycle_t *led_cycle);
 
+int led_cycle_write_file(led_cycle_t *led_cycle, const char *file_name);
+int led_cycle_read_file(led_cycle_t **led_cycle, const char *file_name);
+
 #endif // __LED_CYCLE_H__

@@ -6,3 +6,4 @@ echo 1250 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/
 echo 900 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/pwm-7\:1/duty_cycle
 # echo 350 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/pwm-7\:1/duty_cycle
 echo 1 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/pwm-7\:1/enable
+

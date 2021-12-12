@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include "debug.h"
 #include "led.h"
 #include "share.h"
@@ -390,6 +389,113 @@ int led_read_file(led_strip_t **ret_strip, const char *file_name)
   
   fclose(file_ptr);
 
+  *ret_strip = strip;
+
+  return 0;
+}
+
+int led_append_file(led_strip_t *strip, FILE *file_ptr)
+{
+  size_t write_elements;
+
+  if (strip == NULL)
+  {
+    printDebug("Attempt write NULL led strip\n");
+    return -1;
+  }
+
+  if (file_ptr == NULL)
+  {
+    printDebug("NULL file pointer\n");
+    return -1;
+  }
+
+  // write led count
+  write_elements = fwrite(&(strip->led_count), sizeof(strip->led_count), 1, file_ptr);
+  if (write_elements != 1)
+  {
+    printDebug("Fail to write led count to file pointer: ");
+    printf("wrote %zu, expected 1", write_elements);
+    return -1;
+  }
+
+  // write led color array
+  write_elements = fwrite(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
+  if (write_elements != strip->led_count)
+  {
+    printDebug("Fail to write led color data to file pointer: ");
+    printf("wrote %zu, expected %u", write_elements, strip->led_count);
+    return -1;
+  }
+
+  return 0;
+}
+
+int led_read_file_pointer(led_strip_t **ret_strip, FILE *file_ptr)
+{
+  led_strip_t *strip;
+  size_t read_elements;
+
+  // check null return pointer
+  if (ret_strip == NULL)
+  {
+    printDebug("NULL return pointer\n");
+    return -1;
+  }
+  *ret_strip = NULL;
+
+  if (file_ptr == NULL)
+  {
+    printDebug("NULL file pointer\n");
+    return -1;
+  }
+
+  // allocate space for led struct
+  strip = malloc(sizeof(led_strip_t));
+  if (strip == NULL)
+  {
+    printDebug("Fail to allocate led_strip_t\n");
+    return -1;
+  }
+
+  // read led count
+  read_elements = fread(&(strip->led_count), sizeof(uint32_t), 1, file_ptr);
+  if (read_elements != 1)
+  {
+    printDebug("Fail to read file pointer");
+    free(strip);
+    return -1;
+  }
+
+  // make sure data is valid
+  if (strip->led_count == 0)
+  {
+    printDebug("Read 0 led count from file pointer\n");
+    free(strip);
+    return -1;
+  }
+
+  // allocate space for led colors
+  strip->led_colors = malloc(sizeof(led_color_t)*strip->led_count);
+  if (strip->led_colors == NULL)
+  {
+    printDebug("Fail to allocate space for leds\n");
+    fclose(file_ptr);
+    free(strip);
+    return -1;
+  }
+
+  // read led color array
+  read_elements = fread(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
+  if (read_elements != strip->led_count)
+  {
+    printDebug("Fail to read LEDs from file: ");
+    printf("read %zu bytes but expected %u\n", read_elements, strip->led_count);
+    free(&(strip->led_colors[0]));
+    free(strip);
+    return -1;
+  }
+  
   *ret_strip = strip;
 
   return 0;

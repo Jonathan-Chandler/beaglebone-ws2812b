@@ -2,6 +2,7 @@
 #define __LED_H__
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef struct
 {
@@ -29,5 +30,7 @@ int led_set_range(led_strip_t *strip, uint32_t begin, uint32_t count, led_color_
 int led_set_all(led_strip_t *strip, led_color_t *new_color);
 int led_write_file(led_strip_t *strip, const char *file_name);
 int led_read_file(led_strip_t **ret_strip, const char *file_name);
+int led_append_file(led_strip_t *strip, FILE *file_ptr);
+int led_read_file_pointer(led_strip_t **ret_strip, FILE *file_ptr);
 
 #endif // __LED_H__

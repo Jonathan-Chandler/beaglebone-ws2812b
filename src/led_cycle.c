@@ -227,3 +227,151 @@ int led_cycle_write_and_iterate(led_cycle_t *led_cycle)
 
   return 0;
 }
+
+int led_cycle_write_file(led_cycle_t *led_cycle, const char *file_name)
+{
+  FILE *file_ptr;
+  size_t write_elements;
+  led_cycle_node_t *current_node;
+
+  if (led_cycle_check_params(led_cycle))
+  {
+    printDebug("Fail param check\n");
+    return -1;
+  }
+
+  if (file_name == NULL)
+  {
+    printDebug("NULL file name\n");
+    return -1;
+  }
+
+  file_ptr = fopen(file_name, "wb");
+  if (file_ptr == NULL)
+  {
+    printDebug("Fail to open file: ");
+    printf("%s", file_name);
+    return -1;
+  }
+
+  current_node = led_cycle->first;
+  while (current_node != NULL)
+  {
+    // write milliseconds to display this color configuration
+    write_elements = fwrite(&(current_node->ms_delay), sizeof(current_node->ms_delay), 1, file_ptr);
+
+    // append led strip data to file
+    if (led_append_file(current_node->led_strip, file_ptr))
+    {
+      printDebug("Fail to write elements to file: ");
+      printf("%s - wrote %zu, expected 1", file_name, write_elements);
+      return -1;
+    }
+
+    current_node = current_node->next;
+  }
+
+  fclose(file_ptr);
+
+  return 0;
+}
+
+int led_cycle_read_file(led_cycle_t **ret_cycle, const char *file_name)
+{
+  FILE *file_ptr;
+  led_cycle_t *cycle;
+  size_t read_elements;
+
+  // check null return pointer
+  if (ret_cycle == NULL)
+  {
+    printDebug("NULL return pointer\n");
+    return -1;
+  }
+  *ret_cycle = NULL;
+
+  if (file_name == NULL)
+  {
+    printDebug("NULL file name\n");
+    return -1;
+  }
+
+  // allocate space for led cycle
+  cycle = calloc(1, sizeof(led_cycle_t));
+  if (cycle == NULL)
+  {
+    printDebug("Fail to allocate led_cycle_t\n");
+    return -1;
+  }
+
+  // open saved led cycle file
+  file_ptr = fopen(file_name, "rb");
+  if (file_ptr == NULL)
+  {
+    printDebug("Fail to open file: ");
+    printf("%s\n", file_name);
+    free(cycle);
+    return -1;
+  }
+
+  while (1)
+  {
+    // allocate space for led cycle
+    led_cycle_node_t *node = calloc(1, sizeof(led_cycle_node_t));
+    if (node == NULL)
+    {
+      printDebug("Could not allocate led node\n");
+      return -1;
+    }
+
+    // read led millisecond delay
+    read_elements = fread(&(node->ms_delay), sizeof(uint32_t), 1, file_ptr);
+    if (read_elements != 1)
+    {
+      // ran out of elements to read
+      free(node);
+      break;
+    }
+
+    // read led strip count/color data
+    if (led_read_file_pointer(&(node->led_strip), file_ptr))
+    {
+      // ran out of elements to read
+      free(node);
+      break;
+    }
+    
+    // update first/current if initializing first node
+    if (cycle->first == NULL)
+    {
+      cycle->first = node;
+      cycle->current = node;
+    }
+    else
+    {
+      // existing last node.next pointer = this newly read node
+      cycle->last->next = node;
+    }
+    
+    // update pointer to last node
+    cycle->last = node;
+  }
+
+  fclose(file_ptr);
+
+  // return error if failed to read any nodes from file
+  if (cycle->first == NULL)
+  {
+    printDebug("Fail to read nodes from file ");
+    printf("%s\n", file_name);
+    free (cycle);
+    return -1;
+  }
+
+  // update returned value to newly created cycle
+  *ret_cycle = cycle;
+
+  return 0;
+}
+
+

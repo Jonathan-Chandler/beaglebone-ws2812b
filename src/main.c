@@ -14,8 +14,6 @@
 #include "ws2812b.h"
 #include "share.h"
 
-extern uint32_t *leds;
-
 pru_shmem_t *global_pru_shmem;
 
 int main(void)
