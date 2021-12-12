@@ -1,4 +1,6 @@
 #!/bin/bash
+BBB_IP_ADDR=192.168.4.84
+
 make clean
 make
-scp -r * jonathan@192.168.1.180:/home/jonathan/leds
+scp -r * jonathan@$BBB_IP_ADDR:/home/jonathan/leds

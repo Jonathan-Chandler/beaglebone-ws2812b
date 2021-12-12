@@ -202,3 +202,28 @@ int led_cycle_iterate(led_cycle_t *led_cycle)
 
   return 0;
 }
+
+int led_cycle_write_and_iterate(led_cycle_t *led_cycle)
+{
+  if (led_cycle_check_params(led_cycle))
+  {
+    printDebug("Fail param check\n");
+    return -1;
+  }
+
+  // send to PRU shared memory
+  if (led_cycle_write_current(led_cycle))
+  {
+    printDebug("Fail cycle LED Write\n");
+    return -1;
+  }
+
+  // iterate to next element in led cycle list
+  if (led_cycle_iterate(led_cycle))
+  {
+    printDebug("Fail cycle iterate\n");
+    return -1;
+  }
+
+  return 0;
+}

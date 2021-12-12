@@ -23,7 +23,9 @@ int main(void)
   global_pru_shmem = shmem_allocate();
   led_cycle_t *led_cycle = NULL;
   led_strip_t *led_strip = NULL;
+  led_strip_t *led_strip2 = NULL;
   led_color_t *default_color = NULL;
+  led_color_t *default_color2 = NULL;
 
   // allocate shared mem to communicate to PRU
   if (global_pru_shmem == NULL)
@@ -48,11 +50,27 @@ int main(void)
     goto EXIT_FAIL;
   }
 
+  // color to use for strip
+  default_color2 = led_color_init(0, 200, 0);
+  if (default_color2 == NULL)
+  {
+    printDebug("Fail default_color2 allocate\n");
+    goto EXIT_FAIL;
+  }
+
   // create led strip with default color
   led_strip = led_strip_init(WS2812_LED_COUNT, default_color);
   if (led_strip == NULL)
   {
-    printDebug("Fail default_color allocate\n");
+    printDebug("Fail led_strip allocate\n");
+    goto EXIT_FAIL;
+  }
+
+  // create led strip with default color 2
+  led_strip2 = led_strip_init(WS2812_LED_COUNT, default_color2);
+  if (led_strip2 == NULL)
+  {
+    printDebug("Fail led_strip2 allocate\n");
     goto EXIT_FAIL;
   }
 
@@ -63,19 +81,35 @@ int main(void)
     goto EXIT_FAIL;
   }
 
+  // add led strip to linked list
+  if (led_cycle_add_node(led_cycle, 10000, led_strip2))
+  {
+    printDebug("Fail to add node\n");
+    goto EXIT_FAIL;
+  }
+
 //  while (1)
 //  {
   // attempt writing to LEDs
-  led_cycle_write_current(led_cycle);
+  led_cycle_write_and_iterate(led_cycle);
+  led_cycle_write_and_iterate(led_cycle);
+  led_cycle_write_and_iterate(led_cycle);
 //  }
 
-  shmem_deallocate(global_pru_shmem);
+  led_color_destroy(&default_color);
+  led_color_destroy(&default_color2);
+  //led_strip_destroy(led_strip);
+  //led_strip_destroy(led_strip2);
+  led_cycle_destroy(&led_cycle);
+  shmem_deallocate(&global_pru_shmem);
 
   return 0;
 
 EXIT_FAIL:
   led_color_destroy(&default_color);
-  led_strip_destroy(led_strip);
+  led_color_destroy(&default_color2);
+  //led_strip_destroy(led_strip);
+  //led_strip_destroy(led_strip2);
   led_cycle_destroy(&led_cycle);
   shmem_deallocate(&global_pru_shmem);
 

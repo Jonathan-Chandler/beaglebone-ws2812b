@@ -288,7 +288,7 @@ int led_write_file(led_strip_t *strip, const char *file_name)
   if (write_elements != 1)
   {
     printDebug("Fail to write elements to file: ");
-    printf("%s - wrote %lu, expected 1", file_name, write_elements);
+    printf("%s - wrote %zu, expected 1", file_name, write_elements);
     return -1;
   }
 
@@ -297,7 +297,7 @@ int led_write_file(led_strip_t *strip, const char *file_name)
   if (write_elements != strip->led_count)
   {
     printDebug("Fail to write elements to file: ");
-    printf("%s - wrote %lu, expected %u", file_name, write_elements, strip->led_count);
+    printf("%s - wrote %zu, expected %u", file_name, write_elements, strip->led_count);
     return -1;
   }
 
@@ -381,7 +381,7 @@ int led_read_file(led_strip_t **ret_strip, const char *file_name)
   if (read_elements != strip->led_count)
   {
     printDebug("Fail to read LEDs from file: ");
-    printf("read %lu bytes but expected %u\n", read_elements, strip->led_count);
+    printf("read %zu bytes but expected %u\n", read_elements, strip->led_count);
     fclose(file_ptr);
     free(&(strip->led_colors[0]));
     free(strip);
