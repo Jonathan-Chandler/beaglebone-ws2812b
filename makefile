@@ -1,5 +1,15 @@
 # CC = /home/jonathan/beaglebone-compile/bin/arm-linux-gnueabihf-g++
+
+uname_m = $(shell uname -m)
+
+ifeq ($(uname_m),armv7l)
 CC = gcc
+TEST_CC = gcc
+else
+CC = ../gcc/gcc-linaro-6.5.0-2018.12-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc
+TEST_CC=gcc
+endif
+
 PRCC = /home/jonathan/beaglebone-compile/pru/bin/clpru
 
 INCLUDES = -Iinc -Ipru_src
@@ -15,7 +25,11 @@ build/%.o: src/%.c
 
 all: mk_dirs $(OBJS)
 	$(CC) $(DEFINES) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(OBJ_NAME)
-	#TARGET=main.pru0 make -C ./pru-src all
+ifeq ($(uname_m),armv7l)
+	TARGET=main.pru0 make -C ./pru-src all
+endif
+
+test:
 	make -C ./test all
 
 mk_dirs: 
