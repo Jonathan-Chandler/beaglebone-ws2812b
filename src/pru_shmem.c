@@ -119,7 +119,7 @@ int shmem_check_params(pru_shmem_t *pru_shmem)
   return 0;
 }
 
-int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds)
+int shmem_synchronize(pru_shmem_t *pru_shmem, led_config_t *leds)
 {
   // check shared mem was allocated
   if (shmem_check_params(pru_shmem))
@@ -128,7 +128,7 @@ int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds)
     return -1;
   }
 
-  // check led strip is valid
+  // check led config is valid
   if (led_check_params(leds))
   {
     printDebug("Fail led param check\n");

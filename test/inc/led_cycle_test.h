@@ -10,8 +10,7 @@ int led_cycle_test_create_destroy();
 int led_cycle_test_node_add_destroy();
 int led_cycle_test_write_current();
 int led_cycle_test_write_and_iterate();
-int led_cycle_test_write_file();
-int led_cycle_test_read_file();
+int led_cycle_test_read_write_file();
 
 typedef int LED_CYCLE_TEST();
 

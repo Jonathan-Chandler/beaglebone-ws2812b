@@ -5,8 +5,8 @@
 #include "led.h"
 #include "unit_test.h"
 
-int led_test_strip_init(void);
-int led_test_strip_destroy(void);
+int led_test_config_init(void);
+int led_test_config_destroy(void);
 int led_test_set_single(void);
 int led_test_set_range(void);
 int led_test_set_all(void);

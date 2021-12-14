@@ -55,9 +55,9 @@ int led_cycle_node_destroy(led_cycle_node_t **led_cycle_node)
     return -1;
   }
 
-  if (led_strip_destroy((*led_cycle_node)->led_strip))
+  if (led_config_destroy((*led_cycle_node)->led_config))
   {
-    printDebug("Fail to deallocate led_strip\n");
+    printDebug("Fail to deallocate led_config\n");
   }
 
   free(*led_cycle_node);
@@ -92,10 +92,104 @@ int led_cycle_check_params(led_cycle_t *led_cycle)
     return -1;
   }
 
+  if (led_cycle->last->next != NULL)
+  {
+    printDebug("Last node is invalid - not the final LED config\n");
+    return -1;
+  }
+
   return 0;
 }
 
-int led_cycle_node_add(led_cycle_t *led_cycle, uint32_t display_time_ms, led_strip_t *led_strip)
+int led_cycle_check_equality(led_cycle_t *cycle1, led_cycle_t *cycle2)
+{
+  led_cycle_node_t *node_iter1 = NULL;
+  led_cycle_node_t *node_iter2 = NULL;
+  int node_count = 0;
+
+  if (led_cycle_check_params(cycle1))
+  {
+    printDebug("Fail parameter check on cycle 1\n");
+    return -1;
+  }
+  node_iter1 = cycle1->first;
+
+  if (led_cycle_check_params(cycle2))
+  {
+    printDebug("Fail parameter check on cycle 2\n");
+    return -1;
+  }
+  node_iter2 = cycle2->first;
+
+  do {
+    // check that the nodes have the same led configurations
+    if (led_cycle_node_check_equality(node_iter1, node_iter2))
+    {
+      printDebug("LED cycle node ");
+      printf("%d did not match\n", node_count);
+    }
+
+    // exit now if reached the last node in linked list
+    if (node_iter1 == cycle1->last || node_iter2 == cycle2->last)
+    {
+      break;
+    }
+
+    // cycle to next
+    node_iter1 = node_iter1->next;
+    node_iter2 = node_iter2->next;
+  } while (node_iter1 != NULL && node_iter2 != NULL);
+
+  // make sure last node was reached on both iterators
+  if (node_iter1 != cycle1->last || node_iter2 != cycle2->last)
+  {
+    printDebug("Number of nodes did not match");
+    return -1;
+  } 
+
+  return 0;
+}
+
+int led_cycle_node_check_equality(led_cycle_node_t *node1, led_cycle_node_t *node2)
+{
+  if (node1 == NULL)
+  {
+    printDebug("Null led node1\n");
+    return -1;
+  }
+
+  if (node2 == NULL)
+  {
+    printDebug("Null led node2\n");
+    return -1;
+  }
+  
+  // make sure led configs are not null
+  if (NULL == node1->led_config)
+  {
+    printDebug("Null led configuration in node 1\n");
+  }
+  if (NULL == node2->led_config)
+  {
+    printDebug("Null led configuration in node 2\n");
+  }
+
+  if (node1->ms_delay != node2->ms_delay)
+  {
+    printDebug("Node display times did not match\n");
+    return -1;
+  }
+
+  if (led_config_check_equality(node1->led_config, node2->led_config))
+  {
+    printDebug("Node led color configuration did not match\n");
+    return -1;
+  }
+
+  return 0;
+}
+
+int led_cycle_node_add(led_cycle_t *led_cycle, uint32_t display_time_ms, led_config_t *led_config)
 {
   led_cycle_node_t *new_node;
   if (led_cycle == NULL)
@@ -110,7 +204,7 @@ int led_cycle_node_add(led_cycle_t *led_cycle, uint32_t display_time_ms, led_str
     return -1;
   }
 
-  if (led_check_params(led_strip))
+  if (led_check_params(led_config))
   {
     printDebug("Fail param check\n");
     return -1;
@@ -123,7 +217,7 @@ int led_cycle_node_add(led_cycle_t *led_cycle, uint32_t display_time_ms, led_str
     return -1;
   }
   new_node->ms_delay = display_time_ms;
-  new_node->led_strip = led_strip;
+  new_node->led_config = led_config;
   new_node->next = NULL;
 
   if (led_cycle->first == NULL)
@@ -154,15 +248,15 @@ int led_cycle_write_current(led_cycle_t *led_cycle)
   }
   current_node = led_cycle->current;
 
-  if (led_check_params(current_node->led_strip))
+  if (led_check_params(current_node->led_config))
   {
     printDebug("Fail param check\n");
     return -1;
   }
 
   // write the led values to shared memory
-  shmem_synchronize(global_pru_shmem, current_node->led_strip);
-  if (led_check_params(current_node->led_strip))
+  shmem_synchronize(global_pru_shmem, current_node->led_config);
+  if (led_check_params(current_node->led_config))
   {
     printDebug("Fail param check\n");
     return -1;
@@ -260,8 +354,8 @@ int led_cycle_write_file(led_cycle_t *led_cycle, const char *file_name)
     // write milliseconds to display this color configuration
     write_elements = fwrite(&(current_node->ms_delay), sizeof(current_node->ms_delay), 1, file_ptr);
 
-    // append led strip data to file
-    if (led_append_file(current_node->led_strip, file_ptr))
+    // append led config data to file
+    if (led_append_file(current_node->led_config, file_ptr))
     {
       printDebug("Fail to write elements to file: ");
       printf("%s - wrote %zu, expected 1", file_name, write_elements);
@@ -333,8 +427,8 @@ int led_cycle_read_file(led_cycle_t **ret_cycle, const char *file_name)
       break;
     }
 
-    // read led strip count/color data
-    if (led_read_file_pointer(&(node->led_strip), file_ptr))
+    // read led config count/color data
+    if (led_read_file_pointer(&(node->led_config), file_ptr))
     {
       // ran out of elements to read
       free(node);

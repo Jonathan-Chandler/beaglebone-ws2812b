@@ -17,6 +17,6 @@ pru_shmem_t* shmem_allocate(void);
 int shmem_deallocate(pru_shmem_t **pru_shmem);
 
 int shmem_check_params(pru_shmem_t *pru_shmem);
-int shmem_synchronize(pru_shmem_t *pru_shmem, led_strip_t *leds);
+int shmem_synchronize(pru_shmem_t *pru_shmem, led_config_t *leds);
 
 #endif

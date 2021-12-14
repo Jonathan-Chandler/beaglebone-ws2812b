@@ -1,25 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "debug.h"
+#include "util.h"
 #include "led.h"
 #include "share.h"
-
-// reverse single 8 bit value in order to be used by PRU
-uint32_t reverse_8bit(uint32_t value)
-{
-  uint32_t bit_num;
-  uint32_t reversed_value = 0;
-
-  for (bit_num = 0; bit_num < 8; bit_num++)
-  {
-    if ((0x80 >> bit_num) & value)
-    {
-      reversed_value |= (1 << bit_num);
-    }
-  }
-
-  return reversed_value;
-}
 
 led_color_t *led_color_init(uint8_t red_value, uint8_t green_value, uint8_t blue_value)
 {
@@ -66,9 +50,9 @@ int led_color_destroy(led_color_t **led_color)
   return 0;
 }
 
-led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color)
+led_config_t *led_config_init(uint32_t led_count, led_color_t *default_color)
 {
-  led_strip_t *led_strip = NULL;
+  led_config_t *led_config = NULL;
   led_color_t *led_colors = NULL;
 
   if (led_count == 0)
@@ -83,8 +67,8 @@ led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color)
     return NULL;
   }
 
-  led_strip = malloc(sizeof(led_strip_t));
-  if (led_strip == NULL)
+  led_config = malloc(sizeof(led_config_t));
+  if (led_config == NULL)
   {
     printDebug("Fail to allocate\n");
     return NULL;
@@ -94,7 +78,7 @@ led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color)
 
   if (led_colors == NULL)
   {
-    free(led_strip);
+    free(led_config);
     printDebug("Fail to allocate\n");
     return NULL;
   }
@@ -105,51 +89,51 @@ led_strip_t *led_strip_init(uint32_t led_count, led_color_t *default_color)
     memcpy(&led_colors[led_index], default_color, sizeof(led_color_t));
   }
 
-  led_strip->led_count = led_count;
-  led_strip->led_colors = led_colors;
+  led_config->led_count = led_count;
+  led_config->led_colors = led_colors;
 
-  return led_strip;
+  return led_config;
 }
 
-int led_strip_destroy(led_strip_t *strip)
+int led_config_destroy(led_config_t *config)
 {
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Deallocate NULL led strip\n");
+    printDebug("Deallocate NULL led config\n");
     return -1;
   }
 
-  if (strip->led_colors == NULL)
+  if (config->led_colors == NULL)
   {
     printDebug("Deallocate NULL list of colors\n");
 
     // obj
-    free(strip);
+    free(config);
 
     return -1;
   }
 
   // led color list
-  free(strip->led_colors);
+  free(config->led_colors);
 
   return 0;
 }
 
-int led_check_params(led_strip_t *strip)
+int led_check_params(led_config_t *config)
 {
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Null led strip\n");
+    printDebug("Null led config\n");
     return -1;
   }
 
-  if (strip->led_count == 0)
+  if (config->led_count == 0)
   {
-    printDebug("No leds in strip\n");
+    printDebug("No leds in config\n");
     return -1;
   }
 
-  if (strip->led_colors == NULL)
+  if (config->led_colors == NULL)
   {
     printDebug("Null led colors\n");
     return -1;
@@ -158,15 +142,96 @@ int led_check_params(led_strip_t *strip)
   return 0;
 }
 
-int led_set_single(led_strip_t *strip, uint32_t index, led_color_t *new_color)
+int led_config_check_equality(led_config_t *config1, led_config_t *config2)
 {
-  if (strip == NULL)
+  if (led_check_params(config1))
   {
-    printDebug("Set color on NULL led strip\n");
+    printDebug("LED config 1 fails parameter check\n");
+    return -1;
+  }
+  
+  if (led_check_params(config2))
+  {
+    printDebug("LED config 2 fails parameter check\n");
     return -1;
   }
 
-  if (strip->led_colors == NULL)
+  if (config1->led_count != config2->led_count)
+  {
+    printDebug("LED count did not match\n");
+    return -1;
+  }
+
+  if (config1->led_count != config2->led_count)
+  {
+    printDebug("LED count did not match\n");
+    return -1;
+  }
+
+  for (uint32_t i = 0; i < config1->led_count; i++)
+  {
+    if (led_color_check_equality(&(config1->led_colors[i]), &(config2->led_colors[i])))
+    {
+      printDebug("LED color ");
+      printf("%u did not match\n", i);
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int led_color_check_equality(led_color_t *color1, led_color_t *color2)
+{
+  if (color1 == NULL)
+  {
+    printDebug("Receive NULL color1 for equality check\n");
+    return -1;
+  }
+
+  if (color2 == NULL)
+  {
+    printDebug("Receive NULL color2 for equality check\n");
+    return -1;
+  }
+  
+  if (color1->red != color2->red)
+  {
+    printDebug("Led color red value did not match\n");
+    return -1;
+  }
+
+  if (color1->green != color2->green)
+  {
+    printDebug("Led color green value did not match\n");
+    return -1;
+  }
+
+  if (color1->blue != color2->blue)
+  {
+    printDebug("Led color blue value did not match\n");
+    return -1;
+  }
+
+  if (color1->value != color2->value)
+  {
+    printDebug("Led color pru value did not match\n");
+    return -1;
+  }
+
+  return 0;
+}
+
+
+int led_set_single(led_config_t *config, uint32_t index, led_color_t *new_color)
+{
+  if (config == NULL)
+  {
+    printDebug("Set color on NULL led config\n");
+    return -1;
+  }
+
+  if (config->led_colors == NULL)
   {
     printDebug("Set color on NULL led color list\n");
     return -1;
@@ -178,32 +243,32 @@ int led_set_single(led_strip_t *strip, uint32_t index, led_color_t *new_color)
     return -1;
   }
 
-  if (index >= strip->led_count)
+  if (index >= config->led_count)
   {
     printDebug("LED index out of range\n");
     return -1;
   }
 
-  memcpy(&strip->led_colors[index], new_color, sizeof(led_color_t));
+  memcpy(&config->led_colors[index], new_color, sizeof(led_color_t));
 
   return 0;
 }
 
-int led_set_range(led_strip_t *strip, uint32_t begin, uint32_t count, led_color_t *new_color)
+int led_set_range(led_config_t *config, uint32_t begin, uint32_t count, led_color_t *new_color)
 {
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Set color range on NULL led strip\n");
+    printDebug("Set color range on NULL led config\n");
     return -1;
   }
 
   if (count == 0)
   {
-    printDebug("Set 0 color count on led strip\n");
+    printDebug("Set 0 color count on led config\n");
     return -1;
   }
 
-  if (strip->led_colors == NULL)
+  if (config->led_colors == NULL)
   {
     printDebug("Set color on NULL led color list\n");
     return -1;
@@ -215,7 +280,7 @@ int led_set_range(led_strip_t *strip, uint32_t begin, uint32_t count, led_color_
     return -1;
   }
 
-  if (begin >= strip->led_count || begin+count > strip->led_count)
+  if (begin >= config->led_count || begin+count > config->led_count)
   {
     printDebug("LED index out of range\n");
     return -1;
@@ -223,21 +288,21 @@ int led_set_range(led_strip_t *strip, uint32_t begin, uint32_t count, led_color_
 
   for (uint32_t index = begin; index < begin+count; index++)
   {
-    memcpy(&strip->led_colors[index], new_color, sizeof(led_color_t));
+    memcpy(&config->led_colors[index], new_color, sizeof(led_color_t));
   }
 
   return 0;
 }
 
-int led_set_all(led_strip_t *strip, led_color_t *new_color)
+int led_set_all(led_config_t *config, led_color_t *new_color)
 {
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Set color range on NULL led strip\n");
+    printDebug("Set color range on NULL led config\n");
     return -1;
   }
 
-  if (strip->led_colors == NULL)
+  if (config->led_colors == NULL)
   {
     printDebug("Set color on NULL led color list\n");
     return -1;
@@ -249,22 +314,22 @@ int led_set_all(led_strip_t *strip, led_color_t *new_color)
     return -1;
   }
 
-  for (uint32_t index = 0; index < strip->led_count; index++)
+  for (uint32_t index = 0; index < config->led_count; index++)
   {
-    memcpy(&strip->led_colors[index], new_color, sizeof(led_color_t));
+    memcpy(&config->led_colors[index], new_color, sizeof(led_color_t));
   }
 
   return 0;
 }
 
-int led_write_file(led_strip_t *strip, const char *file_name)
+int led_write_file(led_config_t *config, const char *file_name)
 {
   FILE *file_ptr;
   size_t write_elements;
 
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Attempt write NULL led strip\n");
+    printDebug("Attempt write NULL led config\n");
     return -1;
   }
 
@@ -283,7 +348,7 @@ int led_write_file(led_strip_t *strip, const char *file_name)
   }
 
   // write led count
-  write_elements = fwrite(&(strip->led_count), sizeof(strip->led_count), 1, file_ptr);
+  write_elements = fwrite(&(config->led_count), sizeof(config->led_count), 1, file_ptr);
   if (write_elements != 1)
   {
     printDebug("Fail to write elements to file: ");
@@ -292,11 +357,11 @@ int led_write_file(led_strip_t *strip, const char *file_name)
   }
 
   // write led color array
-  write_elements = fwrite(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
-  if (write_elements != strip->led_count)
+  write_elements = fwrite(&(config->led_colors[0]), sizeof(led_color_t), config->led_count, file_ptr);
+  if (write_elements != config->led_count)
   {
     printDebug("Fail to write elements to file: ");
-    printf("%s - wrote %zu, expected %u", file_name, write_elements, strip->led_count);
+    printf("%s - wrote %zu, expected %u", file_name, write_elements, config->led_count);
     return -1;
   }
 
@@ -305,19 +370,19 @@ int led_write_file(led_strip_t *strip, const char *file_name)
   return 0;
 }
 
-int led_read_file(led_strip_t **ret_strip, const char *file_name)
+int led_read_file(led_config_t **ret_config, const char *file_name)
 {
   FILE *file_ptr;
-  led_strip_t *strip;
+  led_config_t *config;
   size_t read_elements;
 
   // check null return pointer
-  if (ret_strip == NULL)
+  if (ret_config == NULL)
   {
     printDebug("NULL return pointer\n");
     return -1;
   }
-  *ret_strip = NULL;
+  *ret_config = NULL;
 
   if (file_name == NULL)
   {
@@ -326,10 +391,10 @@ int led_read_file(led_strip_t **ret_strip, const char *file_name)
   }
 
   // allocate space for led struct
-  strip = malloc(sizeof(led_strip_t));
-  if (strip == NULL)
+  config = malloc(sizeof(led_config_t));
+  if (config == NULL)
   {
-    printDebug("Attempt write NULL led strip\n");
+    printDebug("Attempt write NULL led config\n");
     return -1;
   }
 
@@ -339,68 +404,68 @@ int led_read_file(led_strip_t **ret_strip, const char *file_name)
   {
     printDebug("Fail to open file: ");
     printf("%s\n", file_name);
-    free(strip);
+    free(config);
     return -1;
   }
 
   // read led count
-  read_elements = fread(&(strip->led_count), sizeof(uint32_t), 1, file_ptr);
+  read_elements = fread(&(config->led_count), sizeof(uint32_t), 1, file_ptr);
   if (read_elements != 1)
   {
     printDebug("Fail to read file: ");
     printf("%s\n", file_name);
     fclose(file_ptr);
-    free(strip);
+    free(config);
     return -1;
   }
   printDebug("test\n");
 
   // make sure data is valid
-  if (strip->led_count == 0)
+  if (config->led_count == 0)
   {
     printDebug("Read 0 led count from file: \n");
     printf("%s\n", file_name);
     fclose(file_ptr);
-    free(strip);
+    free(config);
     return -1;
   }
 
   // allocate space for led colors
-  strip->led_colors = malloc(sizeof(led_color_t)*strip->led_count);
-  if (strip->led_colors == NULL)
+  config->led_colors = malloc(sizeof(led_color_t)*config->led_count);
+  if (config->led_colors == NULL)
   {
     printDebug("Fail to allocate space for leds\n");
     fclose(file_ptr);
-    free(strip);
+    free(config);
     return -1;
   }
 
   // write led color array
-  read_elements = fread(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
-  if (read_elements != strip->led_count)
+  read_elements = fread(&(config->led_colors[0]), sizeof(led_color_t), config->led_count, file_ptr);
+  if (read_elements != config->led_count)
   {
     printDebug("Fail to read LEDs from file: ");
-    printf("read %zu bytes but expected %u\n", read_elements, strip->led_count);
+    printf("read %zu bytes but expected %u\n", read_elements, config->led_count);
     fclose(file_ptr);
-    free(&(strip->led_colors[0]));
-    free(strip);
+    free(&(config->led_colors[0]));
+    free(config);
     return -1;
   }
   
   fclose(file_ptr);
 
-  *ret_strip = strip;
+  *ret_config = config;
 
   return 0;
 }
 
-int led_append_file(led_strip_t *strip, FILE *file_ptr)
+int led_append_file(led_config_t *config, FILE *file_ptr)
 {
   size_t write_elements;
 
-  if (strip == NULL)
+  if (config == NULL)
   {
-    printDebug("Attempt write NULL led strip\n");
+    printDebug("Attempt write NULL led config\n");
     return -1;
   }
 
@@ -411,7 +476,7 @@ int led_append_file(led_strip_t *strip, FILE *file_ptr)
   }
 
   // write led count
-  write_elements = fwrite(&(strip->led_count), sizeof(strip->led_count), 1, file_ptr);
+  write_elements = fwrite(&(config->led_count), sizeof(config->led_count), 1, file_ptr);
   if (write_elements != 1)
   {
     printDebug("Fail to write led count to file pointer: ");
@@ -420,29 +485,29 @@ int led_append_file(led_strip_t *strip, FILE *file_ptr)
   }
 
   // write led color array
-  write_elements = fwrite(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
-  if (write_elements != strip->led_count)
+  write_elements = fwrite(&(config->led_colors[0]), sizeof(led_color_t), config->led_count, file_ptr);
+  if (write_elements != config->led_count)
   {
     printDebug("Fail to write led color data to file pointer: ");
-    printf("wrote %zu, expected %u", write_elements, strip->led_count);
+    printf("wrote %zu, expected %u", write_elements, config->led_count);
     return -1;
   }
 
   return 0;
 }
 
-int led_read_file_pointer(led_strip_t **ret_strip, FILE *file_ptr)
+int led_read_file_pointer(led_config_t **ret_config, FILE *file_ptr)
 {
-  led_strip_t *strip;
+  led_config_t *config;
   size_t read_elements;
 
   // check null return pointer
-  if (ret_strip == NULL)
+  if (ret_config == NULL)
   {
     printDebug("NULL return pointer\n");
     return -1;
   }
-  *ret_strip = NULL;
+  *ret_config = NULL;
 
   if (file_ptr == NULL)
   {
@@ -451,52 +516,52 @@ int led_read_file_pointer(led_strip_t **ret_strip, FILE *file_ptr)
   }
 
   // allocate space for led struct
-  strip = malloc(sizeof(led_strip_t));
-  if (strip == NULL)
+  config = malloc(sizeof(led_config_t));
+  if (config == NULL)
   {
-    printDebug("Fail to allocate led_strip_t\n");
+    printDebug("Fail to allocate led_config_t\n");
     return -1;
   }
 
   // read led count
-  read_elements = fread(&(strip->led_count), sizeof(uint32_t), 1, file_ptr);
+  read_elements = fread(&(config->led_count), sizeof(uint32_t), 1, file_ptr);
   if (read_elements != 1)
   {
     printDebug("Fail to read file pointer");
-    free(strip);
+    free(config);
     return -1;
   }
 
   // make sure data is valid
-  if (strip->led_count == 0)
+  if (config->led_count == 0)
   {
     printDebug("Read 0 led count from file pointer\n");
-    free(strip);
+    free(config);
     return -1;
   }
 
   // allocate space for led colors
-  strip->led_colors = malloc(sizeof(led_color_t)*strip->led_count);
-  if (strip->led_colors == NULL)
+  config->led_colors = malloc(sizeof(led_color_t)*config->led_count);
+  if (config->led_colors == NULL)
   {
     printDebug("Fail to allocate space for leds\n");
     fclose(file_ptr);
-    free(strip);
+    free(config);
     return -1;
   }
 
   // read led color array
-  read_elements = fread(&(strip->led_colors[0]), sizeof(led_color_t), strip->led_count, file_ptr);
-  if (read_elements != strip->led_count)
+  read_elements = fread(&(config->led_colors[0]), sizeof(led_color_t), config->led_count, file_ptr);
+  if (read_elements != config->led_count)
   {
     printDebug("Fail to read LEDs from file: ");
-    printf("read %zu bytes but expected %u\n", read_elements, strip->led_count);
-    free(&(strip->led_colors[0]));
-    free(strip);
+    printf("read %zu bytes but expected %u\n", read_elements, config->led_count);
+    free(&(config->led_colors[0]));
+    free(config);
     return -1;
   }
   
-  *ret_strip = strip;
+  *ret_config = config;
 
   return 0;
 }
