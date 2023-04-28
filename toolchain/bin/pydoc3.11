@@ -1,0 +1,5 @@
+#!/home/jonathan/work/bbb/beaglebone-ws2812b/toolchain/bin/python3.11
+
+import pydoc
+if __name__ == '__main__':
+    pydoc.cli()

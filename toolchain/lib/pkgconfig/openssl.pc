@@ -1,0 +1,9 @@
+prefix=/home/jonathan/work/bbb/beaglebone-ws2812b/toolchain
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib64
+includedir=${prefix}/include
+
+Name: OpenSSL
+Description: Secure Sockets Layer and cryptography libraries and tools
+Version: 1.1.1t
+Requires: libssl libcrypto
