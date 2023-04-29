@@ -1,0 +1,23 @@
+#!/usr/bin/expect
+set USER_ADDR root@192.168.50.3
+set PASSWORD alarm
+set COPY_DST /root/
+
+spawn scp ./bin/pwm_test $USER_ADDR:$COPY_DST
+expect {
+  -re ".*sword.*" {
+    exp_send "$PASSWORD\r"
+  }
+}
+interact
+
+# expect {
+#    -re ".*es.*o.*" {
+#    exp_send "yes\r"
+#    exp_continue
+#   }
+#   -re ".*sword.*" {
+#     exp_send "$PASSWORD\r"
+#   }
+# }
+# interact

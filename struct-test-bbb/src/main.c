@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "util.h"
-#include "ehrpwm2.h"
+#include "epwm.h"
 
 void dump_epwm(epwm_t *EPWM);
 

@@ -1,20 +1,23 @@
-#ifndef __EHRPWM_2_H__
-#define __EHRPWM_2_H__
+#ifndef __EPWM_H__
+#define __EPWM_H__
 #include <stdint.h>
+
+// PWM Subsystem N + 0x200
+#define EPWM_OFFSET 0x200
 
 // TBCTL (Time-Base Control) - 0x0
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
 typedef struct __attribute__((packed, aligned(2)))
 {
-    uint16_t PHSDIR:1;
-    uint16_t CLKDIV:3;
-    uint16_t HSPCLKDIV:3;
-    uint16_t SWFSYNC:1;
-    uint16_t SYNCOSEL:2;
-    uint16_t PRDLD:1;
-    uint16_t PHSEN:1;
-    uint16_t CTRMODE:2;
-    uint16_t FREE_SOFT:2; 
+    uint16_t CTRMODE:2;     // 1-0
+    uint16_t PHSEN:1;       // 2
+    uint16_t PRDLD:1;       // 3
+    uint16_t SYNCOSEL:2;    // 5
+    uint16_t SWFSYNC:1;     // 6
+    uint16_t HSPCLKDIV:3;   // 9-7
+    uint16_t CLKDIV:3;      // 12-10
+    uint16_t PHSDIR:1;      // 13
+    uint16_t FREE_SOFT:2;   // 15-14
 } tbctl_t;
 
 // TBCNT MODE bits
@@ -45,6 +48,15 @@ typedef struct __attribute__((packed, aligned(2)))
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
 typedef struct __attribute__((packed, aligned(2)))
 {
+    uint16_t LOADAMODE:2;   // 1-0
+    uint16_t LOADBMODE:2;   // 3-2
+    uint16_t SHDWAMODE:1;   // 4
+    uint16_t RESERVED2:1;   // 5
+    uint16_t SHDWBMODE:1;   // 6
+    uint16_t RESERVED1:1;   // 7
+    uint16_t SHDWAFULL:1;   // 8
+    uint16_t SHDWBFULL:1;   // 9
+    uint16_t RESERVED0:6;   // 15-10
 } cmpctl_t;
 
 // LOADAMODE and LOADBMODE bits
@@ -56,15 +68,36 @@ typedef struct __attribute__((packed, aligned(2)))
 
 #define CC_SHADOW 0x0
 #define CC_IMMEDIATE 0x1
-// AQCTLA and AQCTLB (Action-qualifier Control)
+
+// AQCTLA and AQCTLB (Action-qualifier Control) - 0x16/0x18
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t ZRO:2;         // 1-0
+    uint16_t PRD:2;         // 3-2
+    uint16_t CAU:2;         // 5-4
+    uint16_t CAD:2;         // 7-6
+    uint16_t CBU:2;         // 9-8
+    uint16_t CBD:2;         // 11-10
+    uint16_t RESERVED0:4;   // 15-12
+} aqctlx_t;
+
 // ZRO, PRD, CAU, CAD, CBU, CBD bits
 #define AQ_NO_ACTION 0x0
 #define AQ_CLEAR 0x1
 #define AQ_SET 0x2
 #define AQ_TOGGLE 0x3
-// DBCTL (Dead-Band Control)
+
+// DBCTL (Dead-Band Control) - 0x1E
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t OUT_MODE:2;    // 1-0
+    uint16_t POLSEL:2;      // 3-2
+    uint16_t IN_MODE:2;     // 5-4
+    uint16_t RESERVED0:10;  // 15-6
+} dbctl_t;
+
 // MODE bits
 #define DB_DISABLE 0x0
 #define DBA_ENABLE 0x1
@@ -75,8 +108,18 @@ typedef struct __attribute__((packed, aligned(2)))
 #define DB_ACTV_LOC 0x1
 #define DB_ACTV_HIC 0x2
 #define DB_ACTV_LO 0x3
-// PCCTL (chopper control)
+
+// PCCTL (chopper control) - 0x3C
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t CHPEN:1;       // 0  
+    uint16_t OSHTWTH:4;     // 4-1
+    uint16_t CHPFREQ:3;     // 7-5
+    uint16_t CHPDUTY:3;     // 10-8
+    uint16_t RESERVED0:5;   // 15-11
+} pcctl_t;
+
 // CHPEN bit
 #define CHP_ENABLE 0x0
 #define CHP_DISABLE 0x1
@@ -98,22 +141,42 @@ typedef struct __attribute__((packed, aligned(2)))
 #define CHP6_8TH 0x5
 #define CHP7_8TH 0x6
 
-// TZSEL (Trip-zone Select)
+// TZSEL (Trip-zone Select) - 0x24
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t CBCn:8;        // 7-0
+    uint16_t OSHTn:8;       // 15-8
+} tzsel_t;
+
 // CBCn and OSHTn bits
 #define TZ_ENABLE 0x0
 #define TZ_DISABLE 0x1
 
-// TZCTL (Trip-zone Control)
+// TZCTL (Trip-zone Control) - 0x28
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t TZA:2;         // 1-0
+    uint16_t TZB:2;         // 3-2
+    uint16_t RESERVED:12;   // 15-4
+} tzctl_t;
+
 // TZA and TZB bits
 #define TZ_HIZ 0x0
 #define TZ_FORCE_HI 0x1
 #define TZ_FORCE_LO 0x2
 #define TZ_DO_NOTHING 0x3
 
-// ETSEL (Event-trigger Select)
+// ETSEL (Event-trigger Select) - 0x32
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t INTSEL:3;      // 2-0
+    uint16_t INTEN:1;       // 3
+    uint16_t RESERVED:12;   // 15-4
+} etsel_t;
+
 // INTSEL, SOCASEL, SOCBSEL bits
 #define ET_CTR_ZERO 0x1
 #define ET_CTR_PRD 0x2
@@ -122,14 +185,23 @@ typedef struct __attribute__((packed, aligned(2)))
 #define ET_CTRU_CMPB 0x6
 #define ET_CTRD_CMPB 0x7
 
-// ETPS (Event-trigger Prescale)
+// ETPS (Event-trigger Prescale) - 0x34
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
+typedef struct __attribute__((packed, aligned(2)))
+{
+    uint16_t INTPRD:2;      // 1-0
+    uint16_t INTCNT:2;      // 3-2
+    uint16_t RESERVED:12;   // 15-4
+} etps_t;
+
 // INTPRD, SOCAPRD, SOCBPRD bits
 #define ET_DISABLE 0x0
 #define ET_1ST 0x1
 #define ET_2ND 0x2
 #define ET_3RD 0x3
 
+// EPWM struct
+// = = = = = = = = = = = = = = = = = = = = = = = = = =
 typedef struct __attribute__((packed, aligned(2)))
 {
     tbctl_t TBCTL;              // 0x00
@@ -139,32 +211,32 @@ typedef struct __attribute__((packed, aligned(2)))
     uint16_t TBCNT;             // 0x08
     uint16_t TBPRD;             // 0x0A
     uint16_t FILL0;             // 0x0C
-    uint16_t CMPCTL;            // 0x0E
+    cmpctl_t CMPCTL;            // 0x0E
     uint16_t CMPAHR;            // 0x10
     uint16_t CMPA;              // 0x12
     uint16_t CMPB;              // 0x14
-    uint16_t AQCTLA;            // 0x16
-    uint16_t AQCTLB;            // 0x18
+    aqctlx_t AQCTLA;            // 0x16
+    aqctlx_t AQCTLB;            // 0x18
     uint16_t AQSFRC;            // 0x1A
     uint16_t AQCSFRC;           // 0x1C
-    uint16_t DBCTL;             // 0x1E
+    dbctl_t  DBCTL;             // 0x1E
     uint16_t DBRED;             // 0x20
     uint16_t DBFED;             // 0x22
-    uint16_t TZSEL;             // 0x24
+    tzsel_t  TZSEL;             // 0x24
     uint16_t FILL1;             // 0x26
-    uint16_t TZCTL;             // 0x28
+    tzctl_t  TZCTL;             // 0x28
     uint16_t TZEINT;            // 0x2A
     uint16_t TZFLG;             // 0x2C
     uint16_t TZCLR;             // 0x2E
     uint16_t TZFRC;             // 0x30
-    uint16_t ETSEL;             // 0x32
-    uint16_t ETPS;              // 0x34
-    //uint16_t ETFLG;           // 0x36
-    //uint16_t ETCLR;           // 0x38
-    //uint16_t ETFRC;           // 0x3A
-    //uint16_t PCCTL;           // 0x3C
+    etsel_t  ETSEL;             // 0x32
+    etps_t   ETPS;              // 0x34
+    uint16_t ETFLG;             // 0x36
+    uint16_t ETCLR;             // 0x38
+    uint16_t ETFRC;             // 0x3A
+    pcctl_t  PCCTL;             // 0x3C
     //uint16_t HRCNFG;          // 0xC0
 } epwm_t;
-#define EPWM_REGISTER_SIZE 0x36
+#define EPWM_REGISTER_SIZE 0x3E
 
 #endif
