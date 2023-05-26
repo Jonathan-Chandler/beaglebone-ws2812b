@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include "pwm_subsystem.h"
 
+//#define EPWM0_BASE_ADDR                    (void*)0x48300200
+//#define EPWM1_BASE_ADDR                    (void*)0x48302200
+//#define EPWM2_BASE_ADDR                    (void*)0x48304200
+//#define EPWM0_OFFSET (uintptr_t)0x200   // PWMSS<N>_BASE + 0x200 
 #define EPWM_OFFSET (uintptr_t)0x200   // PWMSS<N>_BASE + 0x200 
 
 // TBCTL (Time-Base Control) - 0x0
@@ -46,6 +50,11 @@ typedef struct __attribute__((packed, aligned(2)))
 // PHSDIR bit
 #define TB_DOWN 0x0
 #define TB_UP 0x1
+// FREE_SOFT
+#define TB_FS_STOP_NOW 0x0  // stop after next time base counter increment/decrement
+#define TB_FS_STOP_COMPLETE 0x1 // stop after counter completes a whole cycle (counter == period or counter == 0)
+#define TB_FS_FREE  0x2
+#define TB_FS_FREE2 0x3
 
 // CMPCTL (Compare Control) - 0xE
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
@@ -87,8 +96,8 @@ typedef struct __attribute__((packed, aligned(2)))
 
 // ZRO, PRD, CAU, CAD, CBU, CBD bits
 #define AQ_NO_ACTION 0x0
-#define AQ_CLEAR 0x1
-#define AQ_SET 0x2
+#define AQ_CLEAR 0x1        // force low
+#define AQ_SET 0x2          // force high
 #define AQ_TOGGLE 0x3
 
 // DBCTL (Dead-Band Control) - 0x1E
@@ -124,8 +133,8 @@ typedef struct __attribute__((packed, aligned(2)))
 } pcctl_t;
 
 // CHPEN bit
-#define CHP_ENABLE 0x0
-#define CHP_DISABLE 0x1
+#define CHP_ENABLE 0x1
+#define CHP_DISABLE 0x0
 // CHPFREQ bits
 #define CHP_DIV1 0x0
 #define CHP_DIV2 0x1
@@ -207,7 +216,7 @@ typedef struct __attribute__((packed, aligned(2)))
 // = = = = = = = = = = = = = = = = = = = = = = = = = =
 typedef struct __attribute__((packed, aligned(2)))
 {
-    tbctl_t TBCTL;              // 0x00
+    tbctl_t  TBCTL;             // 0x00
     uint16_t TBSTS;             // 0x02
     uint16_t TBPHSHR;           // 0x04
     uint16_t TBPHS;             // 0x06
@@ -238,15 +247,18 @@ typedef struct __attribute__((packed, aligned(2)))
     uint16_t ETCLR;             // 0x38
     uint16_t ETFRC;             // 0x3A
     pcctl_t  PCCTL;             // 0x3C
+    //uint16_t dummy;             // 0x3E
     //uint16_t HRCNFG;          // 0xC0
 } epwm_t;
 #define EPWM_REGISTER_SIZE 0x3E
 
-void    epwm_debug(epwm_t *EPWM);
+volatile epwm_t* epwm_init(volatile pwmss_t *PWMSS);
+int     epwm_destroy(volatile epwm_t *EPWM);
+int     epwm_configure(volatile epwm_t *EPWM);
+
+void    epwm_debug(volatile epwm_t *EPWM);
 int     epwm_test_size();
 
-epwm_t* epwm_init(pwmss_t *PWMSS);
-int     epwm_destroy(epwm_t *EPWM);
 
 #endif
 

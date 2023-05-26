@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "debug.h"
 #include "share.h"
+#include "prcm.h"
 #include "pwm_subsystem.h"
 #include "enhanced_pwm.h"
 #include "control_module.h"
@@ -24,30 +25,51 @@
 
 int main(int argc, char *argv[])
 {
-    pwmss_t *PWMSS = NULL;
-    epwm_t *EPWM = NULL;
-    control_t *CONTROL = NULL;
     mem_mgr_t *mem_mgr = NULL;
+    prcm_t *PRCM = NULL;
+    control_t *CONTROL = NULL;
+    volatile pwmss_t *PWMSS = NULL;
+    volatile epwm_t *EPWM = NULL;
 
     if ( (mem_mgr = mem_mgr_init()) == NULL )
         return -1;
 
+    if ( (PRCM = prcm_init(mem_mgr)) == NULL )
+        goto exit_error;
+    prcm_start_all(PRCM);
+    prcm_debug(PRCM);
+
     if ( (CONTROL = control_init(mem_mgr)) == NULL )
         goto exit_error;
+    control_configure(CONTROL);
+    control_debug(CONTROL);
 
     if ( (PWMSS = pwmss_init(mem_mgr)) == NULL )
         goto exit_error;
+    pwmss_debug(PWMSS);
 
     if ( (EPWM = epwm_init(PWMSS)) == NULL )
         goto exit_error;
-
-    control_debug(CONTROL);
-
-    pwmss_debug(PWMSS);
-
     epwm_debug(EPWM);
 
+    // OCP -P TCRR+TMAR -> COMP -> PWM_LOGIC
+//		dmtimer-pwm-7 {
+//				pinctrl-names = "default";
+//				pinctrl-0 = <&timer7_pin>;
+//
+//				compatible = "ti,omap-dmtimer-pwm";
+//				#pwm-cells = <3>;
+//				ti,timers = <&timer7>;
+//				//ti,prescaler = <0>;		/* 0 thru 7 */
+//				ti,clock-source = <0x00>;	/* timer_sys_ck */
+//				//ti,clock-source = <0x01>;	/* timer_32k_ck */
+//			};
+//		};
 
+    pwmss_configure(PWMSS);
+    epwm_configure(EPWM);
+    pwmss_debug(PWMSS);
+    epwm_debug(EPWM);
     //if ( (retval = pwm_deallocate()) < 0)
     //{
     //    goto exit_error;
@@ -55,6 +77,7 @@ int main(int argc, char *argv[])
 
     epwm_destroy(EPWM);
     pwmss_destroy(PWMSS);
+    prcm_destroy(PRCM);
     control_destroy(CONTROL);
     mem_mgr_destroy(mem_mgr);
     printf("Exit\n");
@@ -64,6 +87,7 @@ exit_error:
     epwm_destroy(EPWM);
     pwmss_destroy(PWMSS);
     control_destroy(CONTROL);
+    prcm_destroy(PRCM);
     mem_mgr_destroy(mem_mgr);
     printf("Error\n");
     return -1;

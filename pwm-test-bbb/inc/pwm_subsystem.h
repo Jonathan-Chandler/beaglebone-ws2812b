@@ -104,10 +104,12 @@ typedef struct __attribute__((packed, aligned(4)))
 } pwmss_t;
 #define PWMSS_REGISTER_SIZE 0x10
 
-void     pwmss_debug(pwmss_t *PWMSS);
+void     pwmss_debug(volatile pwmss_t *PWMSS);
 int      pwmss_test_size();
 
-pwmss_t* pwmss_init(mem_mgr_t *mem_mgr);
-int      pwmss_destroy(pwmss_t *PWMSS);
+volatile pwmss_t* pwmss_init(mem_mgr_t *mem_mgr);
+int      pwmss_destroy(volatile pwmss_t *PWMSS);
+
+int      pwmss_configure(volatile pwmss_t *PWMSS);
 
 #endif

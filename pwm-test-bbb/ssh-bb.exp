@@ -5,7 +5,7 @@ set USER_ADDR root@192.168.50.3
 set PASSWORD alarm
 set COPY_DST /root/
 
-spawn scp ./bin/pwm_test $USER_ADDR:$COPY_DST
+spawn ssh $USER_ADDR
 expect {
   -re ".*sword.*" {
     exp_send "$PASSWORD\r"

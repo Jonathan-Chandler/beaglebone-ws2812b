@@ -10,9 +10,9 @@
 typedef struct
 {
     int control_fd;
-    void *base_addr;
-    uint32_t *pin_addr;
-    uint32_t *pwm_addr;
+    volatile void *base_addr;
+    volatile uint32_t *pin_addr;
+    volatile uint32_t *pwm_addr;
 } control_t;
 
 // CONTROL_MODULE
@@ -47,5 +47,7 @@ void        control_debug(control_t *CONTROL);
 
 control_t*  control_init(mem_mgr_t *mem_mgr);
 int         control_destroy(control_t *CONTROL);
+
+int         control_configure(control_t *CONTROL);
 
 #endif
