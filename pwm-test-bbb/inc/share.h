@@ -1,5 +1,6 @@
-//#ifndef __SHARE_H__
-//#define __SHARE_H__
+#ifndef __SHARE_H__
+#define __SHARE_H__
+
 //// 1 cycle   = 1000 us = 1000 ms = 800 khz
 //// 1.250 uS     1 ms       1 s
 //
@@ -26,8 +27,9 @@
 //#define WS2812_BLUE_MASK              (0xFF << WS2812_BLUE_OFFSET)
 //
 //
+//#define PRU_ICSS_BASE_ADDR 0x4A300000
 //#define SHARED_MEM_MAP_FILE   "/dev/mem"
-////#define AM33XX_PRUSS_SHAREDRAM_BASE		0x4a310000
+////#define AM33XX_PRUSS_SHAREDRAM_BASE_ADDR		0x4A310000
 //#define SHARED_MEM_START_ADDR 0x4A310000
 //
 //#define SHARED_MEM_LED_BEGIN_WRITE_OFFSET 0x0
@@ -40,4 +42,4 @@
 //#define SHARED_MEM_SIZE       ((WS2812_LED_COUNT + SHARED_MEM_LED_START_OFFSET) * sizeof(uint32_t))
 //
 //
-//#endif
+#endif

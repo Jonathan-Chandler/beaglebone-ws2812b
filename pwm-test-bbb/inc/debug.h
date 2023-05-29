@@ -2,6 +2,7 @@
 #define __DEBUG_H__
 #include <stdio.h>
 
+#define DEBUG_PRINT_REG 1
 //#define DEBUG_ENABLED 1
 
 #if DEBUG_ENABLED
@@ -17,12 +18,5 @@
   printf("%s::%d::%s::ERROR::",__FILE__,__LINE__,__func__); \
   printf(__VA_ARGS__); \
 } while (0)
-
-typedef enum 
-{
-  ERROR_NONE,
-  ERROR_BAD_PARAMETER,
-  ERROR_COUNT
-} ERROR_T;
 
 #endif //__DEBUG_H__

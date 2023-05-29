@@ -2,6 +2,7 @@
 #define __PWMSS_H__
 // Pulse-Width Modulation Subsystem
 
+#include "share.h"
 #include "util.h"
 #include "memory_manager.h"
 
@@ -104,12 +105,15 @@ typedef struct __attribute__((packed, aligned(4)))
 } pwmss_t;
 #define PWMSS_REGISTER_SIZE 0x10
 
-void     pwmss_debug(volatile pwmss_t *PWMSS);
 int      pwmss_test_size();
 
 volatile pwmss_t* pwmss_init(mem_mgr_t *mem_mgr);
 int      pwmss_destroy(volatile pwmss_t *PWMSS);
 
 int      pwmss_configure(volatile pwmss_t *PWMSS);
+
+#if DEBUG_PRINT_REG
+void     pwmss_debug(volatile pwmss_t *PWMSS);
+#endif
 
 #endif

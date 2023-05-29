@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "share.h"
 #include "pwm_subsystem.h"
 
 //#define EPWM0_BASE_ADDR                    (void*)0x48300200
@@ -256,9 +257,11 @@ volatile epwm_t* epwm_init(volatile pwmss_t *PWMSS);
 int     epwm_destroy(volatile epwm_t *EPWM);
 int     epwm_configure(volatile epwm_t *EPWM);
 
-void    epwm_debug(volatile epwm_t *EPWM);
 int     epwm_test_size();
 
+#if DEBUG_PRINT_REG
+void    epwm_debug(volatile epwm_t *EPWM);
+#endif
 
 #endif
 

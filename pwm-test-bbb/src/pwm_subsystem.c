@@ -1,6 +1,7 @@
 #include "debug.h"
 #include "pwm_subsystem.h"
 
+#if DEBUG_PRINT_REG
 static const char *pwmss_reg_name[] = 
 {
     "IDVER    ",         // 0x00
@@ -12,7 +13,7 @@ static const char *pwmss_reg_name[] =
 
 void pwmss_debug(volatile pwmss_t *PWMSS)
 {
-    int i;
+    unsigned int i;
     uint32_t *PWMSS_MEM = (uint32_t*) PWMSS;
 
     printf("------------------------------------------------PWMSS DBG------------------------------------------------\n");
@@ -23,6 +24,7 @@ void pwmss_debug(volatile pwmss_t *PWMSS)
     }
     printf("---------------------------------------------------------------------------------------------------------\n");
 }
+#endif // if DEBUG_PRINT_REG
 
 int pwmss_test_size()
 {
@@ -71,9 +73,8 @@ int pwmss_configure(volatile pwmss_t *PWMSS)
     }
 
     // smart idle/standby, no reset, ignore emulation
-    PWMSS->SYSCONFIG.STANDBYMODE = CFG_SMART;
     PWMSS->SYSCONFIG.IDLEMODE = CFG_SMART;
-    PWMSS->SYSCONFIG.FREEMU = CFG_NOSUS;
+    PWMSS->SYSCONFIG.FREEMU = CFG_SUS;
     PWMSS->SYSCONFIG.SOFTRESET = 0;
 
     // ePWM only
@@ -85,28 +86,26 @@ int pwmss_configure(volatile pwmss_t *PWMSS)
     PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ = CL_START_REQ;
 
     // sysconfig
-    if (PWMSS->SYSCONFIG.STANDBYMODE != CFG_SMART)
-        printf("PWMSS->SYSCONFIG.STANDBYMODE: %X\n",PWMSS->SYSCONFIG.STANDBYMODE);
     if (PWMSS->SYSCONFIG.IDLEMODE != CFG_SMART)
-        printf("PWMSS->SYSCONFIG.IDLEMODE: %X\n",PWMSS->SYSCONFIG.IDLEMODE);
-    if (PWMSS->SYSCONFIG.FREEMU != CFG_NOSUS)
-        printf("PWMSS->SYSCONFIG.FREEMU: %X\n",PWMSS->SYSCONFIG.FREEMU);
+        report_error("PWMSS->SYSCONFIG.IDLEMODE: %X\n",PWMSS->SYSCONFIG.IDLEMODE);
+    if (PWMSS->SYSCONFIG.FREEMU != CFG_SUS)
+        report_error("PWMSS->SYSCONFIG.FREEMU: %X\n",PWMSS->SYSCONFIG.FREEMU);
     if (PWMSS->SYSCONFIG.SOFTRESET != 0)
-        printf("PWMSS->SYSCONFIG.SOFTRESET: %X\n",PWMSS->SYSCONFIG.SOFTRESET);
+        report_error("PWMSS->SYSCONFIG.SOFTRESET: %X\n",PWMSS->SYSCONFIG.SOFTRESET);
 
     // clkconfig
     if (PWMSS->CLKCONFIG.eCAPCLK_EN != CL_DISABLE)
-        printf("PWMSS->CLKCONFIG.eCAPCLK_EN: %X\n",PWMSS->CLKCONFIG.eCAPCLK_EN);
+        report_error("PWMSS->CLKCONFIG.eCAPCLK_EN: %X\n",PWMSS->CLKCONFIG.eCAPCLK_EN);
     if (PWMSS->CLKCONFIG.eCAPCLKSTOP_REQ != CL_STOP_REQ)
-        printf("PWMSS->CLKCONFIG.eCAPCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.eCAPCLKSTOP_REQ);
+        report_error("PWMSS->CLKCONFIG.eCAPCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.eCAPCLKSTOP_REQ);
     if (PWMSS->CLKCONFIG.eQEPCLK_EN != CL_DISABLE)
-        printf("PWMSS->CLKCONFIG.eQEPCLK_EN: %X\n",PWMSS->CLKCONFIG.eQEPCLK_EN);
+        report_error("PWMSS->CLKCONFIG.eQEPCLK_EN: %X\n",PWMSS->CLKCONFIG.eQEPCLK_EN);
     if (PWMSS->CLKCONFIG.eQEPCLKSTOP_REQ != CL_STOP_REQ)
-        printf("PWMSS->CLKCONFIG.eQEPCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.eQEPCLKSTOP_REQ);
+        report_error("PWMSS->CLKCONFIG.eQEPCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.eQEPCLKSTOP_REQ);
     if (PWMSS->CLKCONFIG.ePWMCLK_EN != CL_ENABLE)
-        printf("PWMSS->CLKCONFIG.ePWMCLK_EN: %X\n",PWMSS->CLKCONFIG.ePWMCLK_EN);
+        report_error("PWMSS->CLKCONFIG.ePWMCLK_EN: %X\n",PWMSS->CLKCONFIG.ePWMCLK_EN);
     if (PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ != CL_START_REQ)
-        printf("PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ);
+        report_error("PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ: %X\n",PWMSS->CLKCONFIG.ePWMCLKSTOP_REQ);
 
     return 0;
 }

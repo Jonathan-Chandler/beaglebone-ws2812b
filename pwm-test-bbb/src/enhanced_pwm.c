@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,6 +8,7 @@
 #include "enhanced_pwm.h"
 #include "memory_manager.h"
 
+#if DEBUG_PRINT_REG
 static const char *epwm_reg_name[] = 
 {
     "TBCTL  ",           // 0x00
@@ -46,7 +48,7 @@ static const char *epwm_reg_name[] =
 
 void epwm_debug(volatile epwm_t *EPWM)
 {
-    int i;
+    unsigned int i;
     uint16_t *EPWM_MEM = (uint16_t*)EPWM;
 
     printf("------------------------------------------------EPWM DBG-------------------------------------------------\n");
@@ -62,53 +64,64 @@ void epwm_debug(volatile epwm_t *EPWM)
     printf("EPWM_MEM - 0x%X\n", (uint32_t)&EPWM_MEM[i-1]);
     printf("EPWM - 0x%X\n", (uint32_t)EPWM);
 
-    if (EPWM->TBCTL.FREE_SOFT != TB_FS_FREE)
-        printf("EPWM->TBCTL.FREE_SOFT != TB_FS_FREE - 0x%X\n", EPWM->TBCTL.FREE_SOFT);
-
+    // ehrpwmss2 - 0x48304200
+    if (EPWM->TBCTL.FREE_SOFT != TB_FS_STOP_COMPLETE)
+        printf("EPWM->TBCTL.FREE_SOFT != TB_FS_STOP_COMPLETE - 0x%X\n", EPWM->TBCTL.FREE_SOFT);
     if (EPWM->TBCTL.PHSDIR != TB_UP)
         printf("EPWM->TBCTL.PHSDIR != TB_UP - 0x%X\n", EPWM->TBCTL.PHSDIR);
-
     if (EPWM->TBCTL.CLKDIV != TB_DIV1)
         printf("EPWM->TBCTL.CLKDIV != TB_DIV1 - 0x%X\n", EPWM->TBCTL.CLKDIV);
-
     if (EPWM->TBCTL.HSPCLKDIV != TB_DIV1)
         printf("EPWM->TBCTL.HSPCLKDIV != TB_DIV1 - 0x%X\n", EPWM->TBCTL.HSPCLKDIV);
-
-    //if (EPWM->TBCTL->SWFSYNC != 1)
-    //    printf("EPWM->TBCTL->SWFSYNC != 1 - 0x%X\n", EPWM->TBCTL->SWFSYNC);
-
     if (EPWM->TBCTL.SYNCOSEL != TB_SYNC_DISABLE)
         printf("EPWM->TBCTL.SYNCOSEL != TB_SYNC_DISABLE - 0x%X\n", EPWM->TBCTL.SYNCOSEL);
-
     if (EPWM->TBCTL.PRDLD != TB_IMMEDIATE)
         printf("EPWM->TBCTL.PRDLD != TB_IMMEDIATE - 0x%X\n", EPWM->TBCTL.PRDLD);
-
     if (EPWM->TBCTL.PHSEN != TB_DISABLE)
         printf("EPWM->TBCTL.PHSEN != TB_DISABLE - 0x%X\n", EPWM->TBCTL.PHSEN);
-
     if (EPWM->TBCTL.CTRMODE != TB_COUNT_UP)
         printf("EPWM->TBCTL.CTRMODE != TB_COUNT_UP - 0x%X\n", EPWM->TBCTL.CTRMODE);
 
-    if (EPWM->TBPRD != 125)
-        printf("EPWM->TBPRD: %X\n", EPWM->TBPRD);
+    // tbctl = 0110 0000 0111 1000
+    // 0x6070 (read 0x6038)
+
+    // ehrpwmss2 - 0x48304208
     if (EPWM->TBCNT != 0)
         printf("EPWM->TBCNT: %X\n", EPWM->TBCNT);
-    if (EPWM->PCCTL.CHPEN != CHP_DISABLE)
-        printf("EPWM->PCCTL.CHPEN: %X\n", EPWM->PCCTL.CHPEN);
+
+    // ehrpwmss2 - 0x4830420A (125 == 0x7D)
+    if (EPWM->TBPRD != 125)
+        printf("EPWM->TBPRD: %X\n", EPWM->TBPRD);
+
+    // ehrpwmss2 - 0x4830420E
     if (EPWM->CMPCTL.LOADBMODE != CC_CTR_ZERO)
         printf("EPWM->CMPCTL.LOADBMODE: %X\n", EPWM->CMPCTL.LOADBMODE);
+
+    // ehrpwmss2 - 0x48304214 (90 == 0x5A)
+    if (EPWM->CMPB != 90)
+        printf("EPWM->CMPB: %X\n", EPWM->CMPB);
+
+    // ehrpwmss2 - 0x48304218
     if (EPWM->AQCTLB.CBU != AQ_CLEAR)
         printf("EPWM->AQCTLB.CBU: %X\n", EPWM->AQCTLB.CBU);
     if (EPWM->AQCTLB.ZRO != AQ_SET)
         printf("EPWM->AQCTLB.ZRO: %X\n", EPWM->AQCTLB.ZRO);
+
+    // ehrpwmss2 - 0x4830421C
     if (EPWM->AQCSFRC != 0)
         printf("EPWM->AQCSFRC: %X\n", EPWM->AQCSFRC);
+
+    // ehrpwmss2 - 0x48304234
     if (EPWM->ETPS.INTPRD != ET_1ST)
         printf("EPWM->ETPS.INTPRD: %X\n", EPWM->ETPS.INTPRD);
-    if (EPWM->CMPB != 90)
-        printf("EPWM->CMPB: %X\n", EPWM->CMPB);
+
+    // ehrpwmss2 - 0x4830423C
+    if (EPWM->PCCTL.CHPEN != CHP_DISABLE)
+        printf("EPWM->PCCTL.CHPEN: %X\n", EPWM->PCCTL.CHPEN);
+
     printf("---------------------------------------------------------------------------------------------------------\n");
 }
+#endif // if DEBUG_PRINT_REG
 
 int epwm_test_size()
 {
@@ -140,7 +153,7 @@ int epwm_destroy(volatile epwm_t *EPWM)
     if (!EPWM)
     {
         report_log("EPWM was null\n");
-        return -1;
+        return -EINVAL;
     }
 
     // do not deallocate - handled by mem_mgr
@@ -150,95 +163,44 @@ int epwm_destroy(volatile epwm_t *EPWM)
 
 int epwm_configure(volatile epwm_t *EPWM)
 {
-    bool timeout = false;
-    int i;
-    int x;
-    int timeout_count = 0;
-    uint16_t *epwm_etclr = (uint16_t*) ((uintptr_t)EPWM + 0x38);
-    uint16_t *epwm_cmpb = (uint16_t*) ((uintptr_t)EPWM + 0x14);
-    uint16_t *epwm_cmpctl = (uint16_t*) ((uintptr_t)EPWM + 0xE);
-    uint16_t *epwm_tbcnt = (uint16_t*) ((uintptr_t)EPWM + 0x08);
-    epwm_t shadow_epwm;
-    memset(&shadow_epwm, 0, sizeof(shadow_epwm));
-
-    report_log("epwm_etclr = %p\n", epwm_etclr);
-    report_log("epwm_tbcnt = %p\n", epwm_tbcnt);
     if (!EPWM)
     {
         report_log("EPWM was null\n");
         return -1;
     }
 
-    shadow_epwm.TBCTL.FREE_SOFT = TB_FS_STOP_COMPLETE; // free run mode
-    shadow_epwm.TBCTL.PHSDIR = TB_UP;                 // phase direction count up
-    shadow_epwm.TBCTL.CLKDIV = TB_DIV1;               // time base clock prescale divide clock by 1
-    shadow_epwm.TBCTL.HSPCLKDIV = TB_DIV1;            // divide high speed time base clock by 1
-    shadow_epwm.TBCTL.SWFSYNC = 1;                    // do not force software sync
-    shadow_epwm.TBCTL.SYNCOSEL = TB_SYNC_DISABLE;     // disable EPWMxSYNCO signal
-    shadow_epwm.TBCTL.PRDLD = TB_IMMEDIATE;           // do not load time-base period from shadow register
-    shadow_epwm.TBCTL.PHSEN = TB_DISABLE;             // do not load time-base counter from time-base phase register 
-    shadow_epwm.TBCTL.CTRMODE = TB_COUNT_UP;          // up count mode
+    EPWM->TBCTL.FREE_SOFT = TB_FS_STOP_COMPLETE;    // free run mode
+    EPWM->TBCTL.PHSDIR = TB_UP;                     // phase direction count up
+    EPWM->TBCTL.CLKDIV = TB_DIV1;                   // time base clock prescale divide clock by 1
+    EPWM->TBCTL.HSPCLKDIV = TB_DIV1;                // divide high speed time base clock by 1
+    EPWM->TBCTL.SWFSYNC = 1;                        // do not force software sync
+    EPWM->TBCTL.SYNCOSEL = TB_SYNC_DISABLE;         // disable EPWMxSYNCO signal
+    EPWM->TBCTL.PRDLD = TB_IMMEDIATE;               // do not load time-base period from shadow register
+    EPWM->TBCTL.PHSEN = TB_DISABLE;                 // do not load time-base counter from time-base phase register 
+    EPWM->TBCTL.CTRMODE = TB_COUNT_UP;              // up count mode
 
-    shadow_epwm.TBPRD = 125;                          // 1250ns
-    shadow_epwm.TBCNT = 0;                            // reset timer B counter
-    shadow_epwm.PCCTL.CHPEN = CHP_DISABLE;            // no phase chopping
-    shadow_epwm.CMPCTL.LOADBMODE = CC_CTR_ZERO;       // load B when counter is 0
-    //EPWM->CMPCTL.LOADBMODE = CC_CTR_PRD;        // load B when counter equals period
-//  *ehr_cmpctl = EHRPWM_CMPCTL_LOADBMODE_P;
+    EPWM->TBPRD = 125;                              // 1250ns
 
-    shadow_epwm.AQCTLB.CBU = AQ_CLEAR;                // force low when B counter equals CMPB
-    shadow_epwm.AQCTLB.ZRO = AQ_SET;                  // force high when B counter equals 0
-//  *ehr_aqctlb = EHRPWM_AQCTLB_CBU_FORCE_LOW | EHRPWM_AQCTLB_ZRO_FORCE_HIGH; // force high at 0 / force low after B
+    EPWM->TBCNT = 0;                                // reset timer B counter
 
-    shadow_epwm.AQCSFRC = 0;                          // do not force pwm AQC
-//  *ehr_aqcsfrc = EHRPWM_AQCSFRC_CSFB_N;
+    EPWM->PCCTL.CHPEN = CHP_DISABLE;                // no phase chopping
 
-    shadow_epwm.ETPS.INTPRD = ET_1ST;                 // generate interrupt on first event
-//  *flag_etps = EHRPWM_ETPS_1_EVENT;           // event count
+    EPWM->CMPCTL.LOADBMODE = CC_CTR_ZERO;           // load B when counter is 0
 
-    shadow_epwm.CMPB = 0;
-    memcpy((void*)EPWM, &shadow_epwm, sizeof(epwm_t));
+    EPWM->AQCTLB.CBU = AQ_CLEAR;                    // force low when B counter equals CMPB
+    EPWM->AQCTLB.ZRO = AQ_SET;                      // force high when B counter equals 0
 
-    for (i = 0; i < 50; i++)
-    {
-        *epwm_etclr = 0x1;                          // clear events
-        *epwm_cmpb = 90;                            // set comparison B duty cycle to 90
+    EPWM->AQCSFRC = 0;                              // do not force pwm AQC
 
-//            *ehr_cmpb = 90;
-        // delay until shadow buffer is empty
-        while ((*epwm_cmpctl & BIT(9)) && !timeout)
-        {
-            for (x = 0; x <= 50; x++)
-            {
-                if (x >= 50)
-                {
-                    timeout = true;
-                    timeout_count += 1;
-                }
-            }
-        }
+    EPWM->ETPS.INTPRD = ET_1ST;                     // generate interrupt on first event
 
-        report_log("tbcnt = %u\n", *epwm_tbcnt);
-        timeout = false;
-    }
+    EPWM->CMPB = 0;
 
-    report_log("timeout_count = %d\n", timeout_count);
-    
-    printf("------------------------------------------------SHADOW DBG-------------------------------------------------\n");
-    epwm_debug(&shadow_epwm);
-//  *flag_etclr = EHRPWM_ETCLR_CLEAR;
     return 0;
 }
 
-//  *flag_etps = 0; // event count
-//  *flag_etsel = EHRPWM_ETSEL_INTEN | EHRPWM_ETSEL_INTSEL_PRD;  // interrupt selection
-//  *ehr_pcctl = 0; // not using pcctl
-//
-//
 //  *ehr_cmpb = 0;
 //
-//  // PWM force high at timer equal 0 / force low after timer equal to CMPB
-//  
 //  // initialize to write finished
 //  shared_mem[SHARED_MEM_LED_BEGIN_WRITE_OFFSET] = 0;
 //
@@ -287,3 +249,38 @@ int epwm_configure(volatile epwm_t *EPWM)
 //        ; 
 //      *ehr_cmpb = 0;
 //
+
+#if 0
+    bool timeout = false;
+    int i;
+    int x;
+    int timeout_count = 0;
+    uint16_t *epwm_etclr = (uint16_t*) ((uintptr_t)EPWM + 0x38);
+    uint16_t *epwm_cmpb = (uint16_t*) ((uintptr_t)EPWM + 0x14);
+    uint16_t *epwm_cmpctl = (uint16_t*) ((uintptr_t)EPWM + 0xE);
+    uint16_t *epwm_tbcnt = (uint16_t*) ((uintptr_t)EPWM + 0x08);
+
+    for (i = 0; i < 50; i++)
+    {
+        *epwm_etclr = 0x1;                          // clear events
+        *epwm_cmpb = 90;                            // set comparison B duty cycle to 90
+
+        // delay until shadow buffer is empty
+        while ((*epwm_cmpctl & BIT(9)) && !timeout)
+        {
+            for (x = 0; x <= 50; x++)
+            {
+                if (x >= 50)
+                {
+                    timeout = true;
+                    timeout_count += 1;
+                }
+            }
+        }
+
+        report_log("tbcnt = %u\n", EPWM->TBCNT);
+        timeout = false;
+    }
+
+    report_log("timeout_count = %d\n", timeout_count);
+#endif

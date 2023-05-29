@@ -1,181 +1,71 @@
+#include <errno.h>
 #include <sys/types.h>
-//#include <sys/mman.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <sys/mman.h> // mmap/munmap
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #include "debug.h"
 #include "share.h"
-#include "prcm.h"
+#include "cm_per.h"
+#include "prm_per.h"
 #include "pwm_subsystem.h"
 #include "enhanced_pwm.h"
-#include "control_module.h"
 
-// 1. Disable global interrupts (CPU INTM flag)
-// 2. Disable ePWM interrupts
-// 3. Initialize peripheral registers
-// 4. Clear any spurious ePWM flags
-// 5. Enable ePWM interrupts
-// 6. Enable global interrupts
-
-int main(int argc, char *argv[])
+int main(void)
 {
-    mem_mgr_t *mem_mgr = NULL;
-    prcm_t *PRCM = NULL;
-    control_t *CONTROL = NULL;
-    volatile pwmss_t *PWMSS = NULL;
-    volatile epwm_t *EPWM = NULL;
+    int retval = -ENOMEM;
+    mem_mgr_t* mem_mgr = NULL;
+    volatile prm_per_t *prm_per = NULL; 
+    volatile cm_per_t *cm_per = NULL; 
+    volatile pwmss_t  *pwmss2 = NULL; 
+    volatile epwm_t   *epwm2 = NULL;
 
-    if ( (mem_mgr = mem_mgr_init()) == NULL )
-        return -1;
-
-    if ( (PRCM = prcm_init(mem_mgr)) == NULL )
+    // init peripheral memory manager
+    if ( (mem_mgr = mem_mgr_init()) == NULL)
         goto exit_error;
-    prcm_start_all(PRCM);
-    prcm_debug(PRCM);
 
-    if ( (CONTROL = control_init(mem_mgr)) == NULL )
+    // init peripheral memory
+    if ( (prm_per = prm_per_init(mem_mgr)) == NULL)
         goto exit_error;
-    control_configure(CONTROL);
-    control_debug(CONTROL);
-
-    if ( (PWMSS = pwmss_init(mem_mgr)) == NULL )
+    if ( (cm_per = cm_per_init(mem_mgr)) == NULL)
         goto exit_error;
-    pwmss_debug(PWMSS);
-
-    if ( (EPWM = epwm_init(PWMSS)) == NULL )
+    if ( (pwmss2 = pwmss_init(mem_mgr)) == NULL)
         goto exit_error;
-    epwm_debug(EPWM);
+    if ( (epwm2 = epwm_init(pwmss2)) == NULL)
+        goto exit_error;
 
-    // OCP -P TCRR+TMAR -> COMP -> PWM_LOGIC
-//		dmtimer-pwm-7 {
-//				pinctrl-names = "default";
-//				pinctrl-0 = <&timer7_pin>;
-//
-//				compatible = "ti,omap-dmtimer-pwm";
-//				#pwm-cells = <3>;
-//				ti,timers = <&timer7>;
-//				//ti,prescaler = <0>;		/* 0 thru 7 */
-//				ti,clock-source = <0x00>;	/* timer_sys_ck */
-//				//ti,clock-source = <0x01>;	/* timer_32k_ck */
-//			};
-//		};
+    // configure pru/pwm subsystem
+    if ( (retval = prm_per_configure(prm_per)) < 0)
+        goto exit_error;
+    if ( (retval = cm_per_configure(cm_per)) < 0)
+        goto exit_error;
+    if ( (retval = pwmss_configure(pwmss2)) < 0)
+        goto exit_error;
+    if ( (retval = epwm_configure(epwm2)) < 0)
+        goto exit_error;
 
-    pwmss_configure(PWMSS);
-    epwm_configure(EPWM);
-    pwmss_debug(PWMSS);
-    epwm_debug(EPWM);
-    //if ( (retval = pwm_deallocate()) < 0)
-    //{
-    //    goto exit_error;
-    //}
-
-    epwm_destroy(EPWM);
-    pwmss_destroy(PWMSS);
-    prcm_destroy(PRCM);
-    control_destroy(CONTROL);
-    mem_mgr_destroy(mem_mgr);
-    printf("Exit\n");
-    return 0;
+#if DEBUG_PRINT_REG
+    prm_per_debug(prm_per);
+    cm_per_debug(cm_per);
+    pwmss_debug(pwmss2);
+    epwm_debug(epwm2);
+#endif
 
 exit_error:
-    epwm_destroy(EPWM);
-    pwmss_destroy(PWMSS);
-    control_destroy(CONTROL);
-    prcm_destroy(PRCM);
+    epwm_destroy(epwm2);
+    pwmss_destroy(pwmss2);
+    cm_per_destroy(cm_per);
+    prm_per_destroy(prm_per);
     mem_mgr_destroy(mem_mgr);
-    printf("Error\n");
-    return -1;
+
+    if (retval < 0)
+        printf("Error: %d", retval);
+
+    return retval;
 }
 
-//int pwm_allocate()
-//{
-//  // open shared memory file descriptor
-//  //shared_mem_fd = open(SHARED_MEM_MAP_FILE, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-//  shared_mem_fd = open("/dev/mem", O_RDWR | O_SYNC);
-//  if (shared_mem_fd < 0)
-//  {
-//    report_error("Fail to open /dev/mem\n");
-//    goto exit_error;
-//  }
-//  printf("open fd %d\n", shared_mem_fd);
-//
-//  // get memory map on file descriptor
-//  map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_mem_fd, target & ~MAP_MASK);
-//  virt_addr = map_base + (target & MAP_MASK);
-//  if (map_base == (void*) -1)
-//  {
-//    report_error("Fail to get memory map\n");
-//    goto exit_error;
-//  }
-//
-//  printf("pagesize  = %X\n", getpagesize());
-//  printf("map_base  = %p\n", map_base);
-//  printf("virt_addr = %p\n", virt_addr);
-//  printf("value     = %08X\n", *((uint32_t*)virt_addr));
-//
-//  //if (shared_mem_map == MAP_FAILED) 
-//  //{
-//  //  report_log("Fail to get memory map\n");
-//  //  goto exit_error;
-//  //}
-//  printf("mmap\n");
-//
-//  return 0;
-//
-//exit_error:
-//
-//  // failed after allocating memory
-//  if (map_base == MAP_FAILED)
-//  {
-//	pwm_deallocate();
-//  }
-//
-//  return -1;
-//}
-//
-//int pwm_deallocate()
-//{
-//  int rc = 0;
-//
-//  //if (virt_addr == NULL)
-//  //{
-//  //  report_log("NULL pointer to *shmem_t\n");
-//  //  return -1;
-//  //}
-//  //printf("Not null: %p\n", shared_mem_map);
-//
-//  if (map_base != MAP_FAILED)
-//  {
-//    //if (munmap((void *)shared_mem_map, getpagesize()) == -1) 
-//    if (munmap((void *)map_base, MAP_SIZE) == -1) 
-//    {
-//      report_error("Fail to unmap\n");
-//      rc = -1;
-//    }
-//  }
-//
-//  // close file desc
-//  printf("closing fd %d\n", shared_mem_fd);
-//  if (shared_mem_fd >= 0)
-//  {
-//    if (close(shared_mem_fd))
-//    {
-//      report_error("Fail to close file descriptor\n");
-//      rc = -1;
-//    }
-//  }
-//
-//  // deallocate struct
-//  //free((void*)shared_mem_map);
-//  shared_mem_fd = -1;
-//  //shared_mem_map = NULL;
-//
-//  return rc;
-//}
-//
