@@ -41,6 +41,7 @@ CFLAGS = -ggdb -std=c99 -Wall -Wextra
 
 INCLUDES = -Iinc -Ipru_src
 SOURCES = $(wildcard src/*.c)
+SOURCES += $(wildcard src/hal/pru_icss/*.c)
 OBJS = $(SOURCES:src/%.c=build/%.o)
 OBJ_NAME = bin/pwm_test
 DEFINES = -DDEBUG_ENABLED=1
@@ -63,7 +64,7 @@ test:
 	make -C ./test all
 
 mk_dirs: 
-	mkdir -p build
+	mkdir -p build/hal/pru_icss
 	mkdir -p bin
 
 asm_debug: asm_dir $(ASM_OBJS)

@@ -10,7 +10,7 @@ CC = ./toolchain/bin/arm-none-linux-gnueabihf-gcc
 TEST_CC=gcc
 endif
 
-PRCC = /home/jonathan/beaglebone-compile/pru/bin/clpru
+PRCC = ./toolchain/bin/arm-none-linux-gnueabihf-gcc
 
 INCLUDES = -Iinc -Ipru_src
 CFLAGS = -Wall

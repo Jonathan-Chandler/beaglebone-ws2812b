@@ -1,0 +1,125 @@
+/dts-v1/;
+
+/ {
+
+	fragment@0 {
+		target-path = "/";
+
+		__overlay__ {
+
+			chosen {
+
+				overlays {
+					BB-PWM2-00A0 = "Thu May 25 17:11:47 2023";
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+
+			P8_13_pinmux {
+				status = "disabled";
+			};
+
+			P8_19_pinmux {
+				status = "disabled";
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+
+			pinmux-pwm2-pin {
+				pinctrl-single,pins = <0x20 0x04 0x24 0x04>;
+				phandle = <0x01>;
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+
+			bb_pwm2_helper {
+				compatible = "bone-pinmux-helper";
+				pinctrl-names = "default";
+				pinctrl-0 = <0x01>;
+				status = "okay";
+				phandle = <0x02>;
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+			status = "okay";
+			ti,no-idle;
+			ranges = <0x48304000 0x48304000 0x1000>;
+
+			uio@48304000 {
+				reg = <0x48304000 0x1000>;
+				compatible = "uio";
+				symlink = "uio/pwmss2/module";
+			};
+		};
+	};
+
+	fragment@5 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+			status = "okay";
+			reg = <0x48304200 0x80 0x48304280 0x80>;
+			reg-names = "pwm\0hr";
+			interrupt-parent = <0xffffffff>;
+			interrupts = <0x27>;
+			compatible = "uio";
+			symlink = "uio/pwmss2/pwm";
+		};
+	};
+
+	fragment@6 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+			ti,set-bit-to-disable;
+		};
+	};
+
+	__symbols__ {
+		bb_pwm2_pin = "/fragment@2/__overlay__/pinmux-pwm2-pin";
+		bb_pwm2_test_helper = "/fragment@3/__overlay__/bb_pwm2_helper";
+	};
+
+	__fixups__ {
+		ocp = "/fragment@1:target:0\0/fragment@3:target:0";
+		am33xx_pinmux = "/fragment@2:target:0";
+		epwmss2 = "/fragment@4:target:0";
+		ehrpwm2 = "/fragment@5:target:0";
+		intc = "/fragment@5/__overlay__:interrupt-parent:0";
+		ehrpwm2_tbclk = "/fragment@6:target:0";
+	};
+
+	__local_fixups__ {
+
+		fragment@3 {
+
+			__overlay__ {
+
+				bb_pwm2_helper {
+					pinctrl-0 = <0x00>;
+				};
+			};
+		};
+	};
+};

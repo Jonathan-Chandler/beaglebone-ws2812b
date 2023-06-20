@@ -14,6 +14,7 @@
 
 // PRU shared memory
 // devmem 0x4A310000 32
+// ls /proc/device-tree/ocp/interconnect@4a000000/segment@0/target-module@300000/pruss@0
 
 // Power and Reset Management
 
