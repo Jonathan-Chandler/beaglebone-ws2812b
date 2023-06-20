@@ -57,22 +57,22 @@ int main(int argc, char *argv[])
   global_pru_shmem = shmem_allocate();
 
   // get commandline arguments
-  while ((opt = getopt(argc, argv, "l")) != -1)
-  {
-    switch (opt)
-    {
-      case 'l':
-        // loading file
-        if (argc == 3)
-        {
-          return load_led_file(argv[2]);
-          break;
-        }
-      default:
-        printf("Usage: %s [-l <LED cycle data file name>]\n", argv[0]);
-        break;
-    }
-  }
+  //while ((opt = getopt(argc, argv, "l")) != -1)
+  //{
+  //  switch (opt)
+  //  {
+  //    case 'l':
+  //      // loading file
+  //      if (argc == 3)
+  //      {
+  //        return load_led_file(argv[2]);
+  //        break;
+  //      }
+  //    default:
+  //      printf("Usage: %s [-l <LED cycle data file name>]\n", argv[0]);
+  //      break;
+  //  }
+  //}
 
   retval = test_led_cycle();
   if (retval != 0)

@@ -20,28 +20,47 @@
 // LBBO      &r1, r0, 0, 4
 
 #include <stdint.h>
-#include <pru_cfg.h>
-#include "resource_table_empty.h"
+//#include <pru_cfg.h>
+//#include "resource_table_empty.h"
+// ../inc/share.h
 #include "share.h"
 #include "prugpio.h"
 
 volatile register unsigned int __R30;
 volatile register unsigned int __R31;
 
+#define SHMEM_BEGIN_LOCAL (void*)0x10000
+#define SHMEM_LEN 0x2000
+#if 0
+void main(void) 
+{
+    int i;
+    volatile  uint8_t *shared_mem = (uint8_t *)SHMEM_BEGIN_LOCAL;
+
+    for (i = 0; i < SHMEM_LEN; i++)
+    {
+        shared_mem[i] = 0;
+    }
+
+    __halt();
+}
+#endif
+
+#if 1
 void main(void) 
 {
   uint32_t  bit_num = 0;
   uint32_t  led_num = 0;
   uint32_t  led_count = 0;
   uint32_t  *gpio1 = (uint32_t *)GPIO1;
-  uint32_t  *shared_mem = (uint32_t *)AM33XX_PRUSS_SHAREDRAM_BASE;
+  volatile  uint32_t  *shared_mem = (uint32_t *)AM33XX_PRUSS_SHAREDRAM_BASE;
   uint32_t delay_cycles = 0;
   // AM33XX_PRUSS_SHAREDRAM_BASE = 0x4a310000
   // local/global shared data 12K Ram 2: 0x10000
   // PRU_SHAREDMEM   : org = 0x00010000 len = 0x00003000 CREGISTER=28 /* 12kB Shared RAM */
 
   /* Clear SYSCFG[STANDBY_INIT] to enable OCP master port */
-  CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
+  //CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
   // config-pin P8.13 pwm
   // echo 0 > /sys/devices/platform/ocp/48304000.epwmss/48304200.pwm/pwm/pwmchip7/export
@@ -333,6 +352,7 @@ void main(void)
 
   __halt();
 }
+#endif
 
     //        __R30 = 0;
     //        __delay_cycles(100000000/5);    // Wait 1/2 second
@@ -481,13 +501,13 @@ void main(void)
 //
 
 // Turns off triggers
-#pragma DATA_SECTION(init_pins, ".init_pins")
-#pragma RETAIN(init_pins)
-const char init_pins[] =  
-	"/sys/class/leds/beaglebone:green:usr0/trigger\0none\0" \
-	"/sys/class/leds/beaglebone:green:usr1/trigger\0none\0" \
-	"/sys/class/leds/beaglebone:green:usr2/trigger\0none\0" \
-	"/sys/class/leds/beaglebone:green:usr3/trigger\0none\0" \
-  "/sys/devices/platform/ocp/ocp\:P9_30_pinmux/state\0 pruout \0" \
-	"\0\0";
-
+//#pragma DATA_SECTION(init_pins, ".init_pins")
+//#pragma RETAIN(init_pins)
+//const char init_pins[] =  
+//	"/sys/class/leds/beaglebone:green:usr0/trigger\0none\0" \
+//	"/sys/class/leds/beaglebone:green:usr1/trigger\0none\0" \
+//	"/sys/class/leds/beaglebone:green:usr2/trigger\0none\0" \
+//	"/sys/class/leds/beaglebone:green:usr3/trigger\0none\0" \
+//  "/sys/devices/platform/ocp/ocp\:P9_30_pinmux/state\0 pruout \0" \
+//	"\0\0";
+//

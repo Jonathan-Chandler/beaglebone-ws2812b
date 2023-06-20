@@ -46,6 +46,8 @@ static const char *epwm_reg_name[] =
 };
 #define EPWM_REG_COUNT sizeof(epwm_reg_name)/sizeof(epwm_reg_name[0])
 
+void epwm_test_output(volatile epwm_t *EPWM);
+
 void epwm_debug(volatile epwm_t *EPWM)
 {
     unsigned int i;
@@ -196,6 +198,10 @@ int epwm_configure(volatile epwm_t *EPWM)
 
     EPWM->CMPB = 0;
 
+#if 1
+    epwm_test_output(EPWM);
+#endif
+
     return 0;
 }
 
@@ -250,10 +256,11 @@ int epwm_configure(volatile epwm_t *EPWM)
 //      *ehr_cmpb = 0;
 //
 
-#if 0
+void epwm_test_output(volatile epwm_t *EPWM)
+{
     bool timeout = false;
-    int i;
     int x;
+    int i;
     int timeout_count = 0;
     uint16_t *epwm_etclr = (uint16_t*) ((uintptr_t)EPWM + 0x38);
     uint16_t *epwm_cmpb = (uint16_t*) ((uintptr_t)EPWM + 0x14);
@@ -278,9 +285,9 @@ int epwm_configure(volatile epwm_t *EPWM)
             }
         }
 
-        report_log("tbcnt = %u\n", EPWM->TBCNT);
+        report_log("tbcnt = %u\n", *epwm_tbcnt);
         timeout = false;
     }
 
     report_log("timeout_count = %d\n", timeout_count);
-#endif
+}

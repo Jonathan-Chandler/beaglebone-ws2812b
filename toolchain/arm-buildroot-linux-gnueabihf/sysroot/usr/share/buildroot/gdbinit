@@ -1,2 +1,0 @@
-add-auto-load-safe-path /home/jonathan/work/bbb/beaglebone-ws2812b/toolchain/arm-buildroot-linux-gnueabihf/sysroot
-set sysroot /home/jonathan/work/bbb/beaglebone-ws2812b/toolchain/arm-buildroot-linux-gnueabihf/sysroot

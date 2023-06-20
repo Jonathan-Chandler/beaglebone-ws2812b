@@ -2,15 +2,16 @@
 
 set USER_ADDR root@192.168.50.3
 #set USER_ADDR root@192.168.1.133
-set PASSWORD alarm
-set COPY_DST /root/
+#set PASSWORD alarm
+set COPY_DST /home/root/
 
+#spawn scp -O ./bin/pwm_test $USER_ADDR:$COPY_DST
 spawn scp ./bin/pwm_test $USER_ADDR:$COPY_DST
-expect {
-  -re ".*sword.*" {
-    exp_send "$PASSWORD\r"
-  }
-}
+#expect {
+#  -re ".*sword.*" {
+#    exp_send "$PASSWORD\r"
+#  }
+#}
 interact
 
 # expect {
